@@ -115,78 +115,100 @@ export default function Home() {
       </div>
 
       {/* Featured Song Lineup */}
-      <div className="w-full max-w-4xl">
-        {loadingLineup ? (
-          <div className="card text-center">
-            <p className="text-sm text-gray-500">Loading song lineup...</p>
-          </div>
-        ) : featuredLineup ? (
-          <Link
-            to={`/lineups/${featuredLineup.id}`}
-            className="card block hover:shadow-lg transition-shadow active:scale-[0.99] border-l-4 border-primary"
+<div className="w-full max-w-4xl">
+  {loadingLineup ? (
+    <div className="card text-center">
+      <p className="text-sm text-gray-500">Loading song lineup...</p>
+    </div>
+  ) : featuredLineup ? (
+    <Link
+      to={`/lineups/${featuredLineup.id}`}
+      className="card block hover:shadow-lg transition-shadow active:scale-[0.99] border-l-4 border-primary overflow-hidden"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+        <div className="min-w-0">
+          <p className="text-[11px] sm:text-xs font-bold text-primary uppercase tracking-wide mb-1">
+            Current / Upcoming Song Lineup
+          </p>
+
+          <h2 className="text-lg sm:text-xl font-bold text-church-navy leading-tight break-words">
+            {featuredLineup.title}
+          </h2>
+
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+            {formatDate(featuredLineup.service_date)}
+          </p>
+        </div>
+
+        <div className="w-full sm:w-auto bg-primary-light px-3 py-2 rounded-xl sm:text-right">
+          <p className="text-[11px] text-gray-500">Song Leader</p>
+          <p className="font-bold text-primary text-base break-words">
+            {featuredLineup.song_leader}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {featuredLineup.sections.map(section => (
+          <div
+            key={section.id || section.section_name}
+            className="rounded-xl bg-church-lightblue/80 p-3 min-w-0"
           >
-            <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
-              <div>
-                <p className="text-xs font-bold text-primary uppercase tracking-wide mb-1">
-                  Current / Upcoming Song Lineup
-                </p>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="text-xs font-bold text-primary uppercase tracking-wide truncate">
+                {section.section_name}
+              </p>
 
-                <h2 className="text-xl font-bold text-church-navy">
-                  {featuredLineup.title}
-                </h2>
-
-                <p className="text-sm text-gray-500">
-                  {formatDate(featuredLineup.service_date)}
-                </p>
-              </div>
-
-              <div className="bg-primary-light px-3 py-2 rounded-xl text-right">
-                <p className="text-xs text-gray-500">Song Leader</p>
-                <p className="font-bold text-primary">
-                  {featuredLineup.song_leader}
-                </p>
-              </div>
+              <span className="text-[10px] text-gray-500 bg-white px-2 py-0.5 rounded-full shrink-0">
+                {section.songs.length} {section.songs.length === 1 ? 'song' : 'songs'}
+              </span>
             </div>
 
-            <div className="flex flex-col gap-3">
-              {featuredLineup.sections.map(section => (
-                <div key={section.id || section.section_name}>
-                  <p className="text-xs font-bold text-primary mb-1">
-                    {section.section_name}
+            <div className="flex flex-col gap-1.5">
+              {section.songs.map((song, index) => (
+                <div
+                  key={song.id || `${section.section_name}-${index}`}
+                  className="bg-white rounded-lg px-2.5 py-2"
+                >
+                  <p className="text-sm font-semibold text-church-navy leading-snug break-words">
+                    {index + 1}. {song.title || 'Untitled Song'}
                   </p>
 
-                  <div className="flex flex-col gap-1">
-                    {section.songs.map((song, index) => (
-                      <p key={song.id || `${section.section_name}-${index}`} className="text-sm text-church-navy">
-                        <span className="font-semibold">{index + 1}. {song.title}</span>
-                        <span className="text-gray-400">
-                          {' '}· Key: {song.key_override || song.current_key || song.original_key || '—'}
-                        </span>
-                      </p>
-                    ))}
-                  </div>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    Key: {song.key_override || song.current_key || song.original_key || '—'}
+                    {song.artist ? ` · ${song.artist}` : ''}
+                  </p>
                 </div>
               ))}
             </div>
-
-            <p className="text-xs text-gray-400 mt-4">
-              Tap to open full lineup and song links.
-            </p>
-          </Link>
-        ) : (
-          <Link
-            to="/lineups/add"
-            className="card block text-center hover:shadow-md transition-shadow active:scale-[0.99] border-l-4 border-primary"
-          >
-            <h2 className="text-lg font-bold text-church-navy mb-1">
-              No Song Lineup Yet
-            </h2>
-            <p className="text-sm text-gray-500">
-              Create a lineup so the song leader and songs appear here.
-            </p>
-          </Link>
-        )}
+          </div>
+        ))}
       </div>
+
+      <div className="mt-4 pt-3 border-t border-church-border flex items-center justify-between gap-2">
+        <p className="text-[11px] sm:text-xs text-gray-400">
+          Tap to open full lineup
+        </p>
+
+        <span className="text-xs font-bold text-primary">
+          View →
+        </span>
+      </div>
+    </Link>
+  ) : (
+    <Link
+      to="/lineups/add"
+      className="card block text-center hover:shadow-md transition-shadow active:scale-[0.99] border-l-4 border-primary"
+    >
+      <h2 className="text-lg font-bold text-church-navy mb-1">
+        No Song Lineup Yet
+      </h2>
+      <p className="text-sm text-gray-500">
+        Create a lineup so the song leader and songs appear here.
+      </p>
+    </Link>
+  )}
+</div>
 
       {/* Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-4xl">
