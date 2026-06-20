@@ -107,7 +107,7 @@ export default function AddSong() {
         <div className="card flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-primary">Lyrics &amp; Chords</h2>
-            <p className="text-xs text-gray-400">Use [G] [Am] for chords</p>
+            <p className="text-xs text-gray-400">Put chords on the line above the lyrics</p>
           </div>
 
           {sections.map((s, i) => (

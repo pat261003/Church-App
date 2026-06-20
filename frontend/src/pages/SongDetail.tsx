@@ -4,22 +4,10 @@ import toast from 'react-hot-toast';
 import { fetchSong } from '../api/songs';
 import { Song, SongSection } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { transposeLyrics, transposeKey, ALL_KEYS } from '../utils/transpose';
+import { transposeLyrics, transposeKey, ALL_KEYS, isChordLine } from '../utils/transpose';
 import { getSongExportUrl } from '../api/songs';
 
-function renderLyricsLine(line: string) {
-  const parts = line.split(/(\[[^\]]+\])/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('[') && part.endsWith(']')) {
-      return (
-        <span key={i} className="text-primary font-bold not-italic">
-          {part.slice(1, -1)}
-        </span>
-      );
-    }
-    return <span key={i}>{part}</span>;
-  });
-}
+
 
 function LyricsSection({ section, currentKey, originalKey }: {
   section: SongSection;
@@ -27,12 +15,19 @@ function LyricsSection({ section, currentKey, originalKey }: {
   originalKey: string;
 }) {
   const content = transposeLyrics(section.content, originalKey, currentKey);
+
   return (
     <div className="mb-5">
       <span className="section-label mb-2 inline-block">{section.section_type}</span>
-      <div className="font-mono text-sm leading-relaxed whitespace-pre-wrap bg-church-lightblue rounded-lg p-3">
+
+      <div className="font-mono text-sm leading-relaxed bg-church-lightblue rounded-lg p-3 overflow-x-auto">
         {content.split('\n').map((line, i) => (
-          <div key={i}>{renderLyricsLine(line)}</div>
+          <div
+            key={i}
+            className={`whitespace-pre ${isChordLine(line) ? 'text-primary font-bold' : 'text-church-navy'}`}
+          >
+            {line || ' '}
+          </div>
         ))}
       </div>
     </div>
