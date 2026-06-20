@@ -58,3 +58,68 @@
     white-space: break-spaces;
   }
 }
+
+.chord-lyrics-box {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.chord-lyric-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  row-gap: 0.15rem;
+  margin-bottom: 0.65rem;
+}
+
+.chord-segment {
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 0;
+  white-space: pre-wrap;
+}
+
+.chord-name {
+  color: #5B7FA6;
+  font-weight: 700;
+  line-height: 1.1;
+  min-height: 1rem;
+}
+
+.lyric-text {
+  color: #1A1A1A;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.lyric-only-line {
+  color: #1A1A1A;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  margin-bottom: 0.45rem;
+}
+
+.chord-only-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.45rem;
+}
+
+@media (max-width: 640px) {
+  .chord-lyrics-box {
+    font-size: 12px;
+  }
+
+  .chord-lyric-line {
+    margin-bottom: 0.8rem;
+  }
+
+  .chord-name {
+    font-size: 0.95em;
+  }
+}

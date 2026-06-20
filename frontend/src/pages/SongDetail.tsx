@@ -7,7 +7,118 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { transposeLyrics, transposeKey, ALL_KEYS, isChordLine } from '../utils/transpose';
 import { getSongDocxExportUrl } from '../api/songs';
 
+function getChordTokens(chordLine: string) {
+  const tokens: { chord: string; index: number }[] = [];
+  const regex = /\S+/g;
+  let match: RegExpExecArray | null;
 
+  while ((match = regex.exec(chordLine)) !== null) {
+    tokens.push({
+      chord: match[0],
+      index: match.index,
+    });
+  }
+
+  return tokens;
+}
+
+function renderChordOverLyric(chordLine: string, lyricLine: string, keyPrefix: string) {
+  const chords = getChordTokens(chordLine);
+
+  if (chords.length === 0) {
+    return (
+      <div key={keyPrefix} className="lyric-only-line">
+        {lyricLine || ' '}
+      </div>
+    );
+  }
+
+  const pieces = [];
+  let cursor = 0;
+
+  chords.forEach((chord, index) => {
+    const chordPosition = Math.max(0, Math.min(chord.index, lyricLine.length));
+
+    if (chordPosition > cursor) {
+      pieces.push({
+        chord: '',
+        lyric: lyricLine.slice(cursor, chordPosition),
+      });
+      cursor = chordPosition;
+    }
+
+    const nextChordPosition =
+      index + 1 < chords.length
+        ? Math.max(chordPosition, Math.min(chords[index + 1].index, lyricLine.length))
+        : lyricLine.length;
+
+    pieces.push({
+      chord: chord.chord,
+      lyric: lyricLine.slice(cursor, nextChordPosition) || ' ',
+    });
+
+    cursor = nextChordPosition;
+  });
+
+  if (cursor < lyricLine.length) {
+    pieces.push({
+      chord: '',
+      lyric: lyricLine.slice(cursor),
+    });
+  }
+
+  return (
+    <div key={keyPrefix} className="chord-lyric-line">
+      {pieces.map((piece, i) => (
+        <span key={i} className="chord-segment">
+          <span className="chord-name">{piece.chord || '\u00A0'}</span>
+          <span className="lyric-text">{piece.lyric || '\u00A0'}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function renderSongLines(content: string) {
+  const lines = content.split('\n');
+  const rendered = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const currentLine = lines[i];
+    const nextLine = lines[i + 1];
+
+    if (
+      isChordLine(currentLine) &&
+      nextLine !== undefined &&
+      !isChordLine(nextLine)
+    ) {
+      rendered.push(renderChordOverLyric(currentLine, nextLine, `pair-${i}`));
+      i++;
+      continue;
+    }
+
+    if (isChordLine(currentLine)) {
+      rendered.push(
+        <div key={`chords-${i}`} className="chord-only-line">
+          {currentLine.trim().split(/\s+/).map((chord, chordIndex) => (
+            <span key={chordIndex} className="chord-name mr-6">
+              {chord}
+            </span>
+          ))}
+        </div>
+      );
+      continue;
+    }
+
+    rendered.push(
+      <div key={`line-${i}`} className="lyric-only-line">
+        {currentLine || ' '}
+      </div>
+    );
+  }
+
+  return rendered;
+}
 
 function LyricsSection({ section, currentKey, originalKey }: {
   section: SongSection;
@@ -17,20 +128,13 @@ function LyricsSection({ section, currentKey, originalKey }: {
   const content = transposeLyrics(section.content, originalKey, currentKey);
 
   return (
-    <div className="mb-5">
+    <div className="mb-6">
       <span className="section-label mb-2 inline-block">
         {section.section_type}
       </span>
 
-      <div className="song-lyrics font-mono text-[12px] sm:text-sm leading-6 bg-church-lightblue rounded-lg p-3 max-w-full">
-        {content.split('\n').map((line, i) => (
-          <div
-            key={i}
-            className={`song-line ${isChordLine(line) ? 'text-primary font-bold' : 'text-church-navy'}`}
-          >
-            {line || ' '}
-          </div>
-        ))}
+      <div className="chord-lyrics-box font-mono text-[12px] sm:text-sm bg-church-lightblue rounded-lg p-3 max-w-full">
+        {renderSongLines(content)}
       </div>
     </div>
   );

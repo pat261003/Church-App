@@ -4,19 +4,7 @@ import { fetchSong } from '../api/songs';
 import { Song, SongSection } from '../types';
 import { transposeLyrics } from '../utils/transpose';
 
-function renderLine(line: string) {
-  const parts = line.split(/(\[[^\]]+\])/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('[') && part.endsWith(']')) {
-      return (
-        <span key={i} className="font-bold text-gray-800 not-italic">
-          {part.slice(1, -1)}
-        </span>
-      );
-    }
-    return <span key={i}>{part}</span>;
-  });
-}
+
 
 function PrintSection({ section, currentKey, originalKey }: {
   section: SongSection;
