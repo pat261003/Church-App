@@ -1,40 +1,39 @@
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import toast from 'react-hot-toast';
 import {
   DndContext,
   closestCenter,
-  PointerSensor,
   KeyboardSensor,
+  PointerSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
 import {
+  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
   useSortable,
-  arrayMove,
+  verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SongSection } from '../types';
 
 const SECTION_SUGGESTIONS = [
+  'Intro',
   'Verse 1',
   'Verse 2',
   'Verse 3',
   'Verse 4',
+  'Pre-Chorus',
   'Chorus',
   'Chorus 2',
-  'Pre-Chorus',
-  'Pre-Chorus 2',
   'Bridge',
   'Bridge 2',
-  'Ending',
-  'Instrumental',
-  'Intro',
-  'Outro',
   'Tag',
-  'Refrain',
-  'Other',
+  'Ending',
+  'Outro',
+  'Instrumental',
 ];
 
 function makeClientId() {
@@ -42,7 +41,7 @@ function makeClientId() {
     return crypto.randomUUID();
   }
 
-  return `section-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 export function createSection(sectionType = 'Verse 1', order = 0): SongSection {
@@ -62,21 +61,147 @@ export function withClientIds(sections: SongSection[]): SongSection[] {
   }));
 }
 
-function getSectionId(section: SongSection, index: number) {
-  return section.client_id || section.id || `section-${index}`;
+function reorderSections(sections: SongSection[]) {
+  return sections.map((section, index) => ({
+    ...section,
+    section_order: index,
+  }));
+}
+
+function cleanHeading(line: string) {
+  return line
+    .trim()
+    .replace(/^\[/, '')
+    .replace(/\]$/, '')
+    .replace(/:$/, '')
+    .trim();
+}
+
+function detectSectionHeading(line: string) {
+  const cleaned = cleanHeading(line);
+  const lower = cleaned.toLowerCase();
+
+  if (!cleaned) return null;
+
+  if (/^(intro|introduction)$/.test(lower)) return 'Intro';
+
+  const verseMatch = lower.match(/^(verse|v)\s*(\d+)?$/);
+  if (verseMatch) {
+    return verseMatch[2] ? `Verse ${verseMatch[2]}` : 'Verse';
+  }
+
+  if (/^(pre[-\s]?chorus|pre chorus)$/.test(lower)) return 'Pre-Chorus';
+
+  const chorusMatch = lower.match(/^(chorus|refrain|c)\s*(\d+)?$/);
+  if (chorusMatch) {
+    return chorusMatch[2] ? `Chorus ${chorusMatch[2]}` : 'Chorus';
+  }
+
+  const bridgeMatch = lower.match(/^(bridge|b)\s*(\d+)?$/);
+  if (bridgeMatch) {
+    return bridgeMatch[2] ? `Bridge ${bridgeMatch[2]}` : 'Bridge';
+  }
+
+  if (/^(tag)$/.test(lower)) return 'Tag';
+  if (/^(ending|end)$/.test(lower)) return 'Ending';
+  if (/^(outro)$/.test(lower)) return 'Outro';
+  if (/^(instrumental|interlude)$/.test(lower)) return 'Instrumental';
+
+  return null;
+}
+
+function uniqueSectionName(baseName: string, existingNames: string[]) {
+  if (baseName === 'Verse') {
+    const verseCount = existingNames.filter(name =>
+      name.toLowerCase().startsWith('verse')
+    ).length;
+
+    return `Verse ${verseCount + 1}`;
+  }
+
+  if (!existingNames.includes(baseName)) {
+    return baseName;
+  }
+
+  let count = 2;
+  let nextName = `${baseName} ${count}`;
+
+  while (existingNames.includes(nextName)) {
+    count++;
+    nextName = `${baseName} ${count}`;
+  }
+
+  return nextName;
+}
+
+function parseFullSong(rawText: string): SongSection[] {
+  const lines = rawText.replace(/\r\n/g, '\n').split('\n');
+
+  const parsedSections: SongSection[] = [];
+  let currentSectionName = '';
+  let currentLines: string[] = [];
+
+  function saveCurrentSection() {
+    const content = currentLines.join('\n').trim();
+
+    if (!content) return;
+
+    const existingNames = parsedSections.map(section => section.section_type);
+    const finalName = uniqueSectionName(currentSectionName || 'Verse', existingNames);
+
+    parsedSections.push({
+      client_id: makeClientId(),
+      section_type: finalName,
+      section_order: parsedSections.length,
+      content,
+    });
+
+    currentLines = [];
+  }
+
+  for (const line of lines) {
+    const heading = detectSectionHeading(line);
+
+    if (heading) {
+      saveCurrentSection();
+      currentSectionName = heading;
+      continue;
+    }
+
+    currentLines.push(line);
+  }
+
+  saveCurrentSection();
+
+  if (parsedSections.length > 0) {
+    return parsedSections;
+  }
+
+  const fallbackContent = rawText.trim();
+
+  if (!fallbackContent) return [];
+
+  return [
+    {
+      client_id: makeClientId(),
+      section_type: 'Verse 1',
+      section_order: 0,
+      content: fallbackContent,
+    },
+  ];
 }
 
 function SortableSection({
   section,
   index,
-  total,
-  updateSection,
+  updateSectionType,
+  updateSectionContent,
   removeSection,
 }: {
   section: SongSection;
   index: number;
-  total: number;
-  updateSection: (index: number, key: keyof SongSection, value: string | number) => void;
+  updateSectionType: (index: number, value: string) => void;
+  updateSectionContent: (index: number, value: string) => void;
   removeSection: (index: number) => void;
 }) {
   const {
@@ -87,7 +212,7 @@ function SortableSection({
     transition,
     isDragging,
   } = useSortable({
-    id: getSectionId(section, index),
+    id: section.client_id || section.id || String(index),
   });
 
   const style = {
@@ -99,17 +224,17 @@ function SortableSection({
     <div
       ref={setNodeRef}
       style={style}
-      className={`border border-church-border rounded-lg p-3 bg-white ${
+      className={`border border-church-border rounded-xl p-3 bg-white ${
         isDragging ? 'opacity-70 shadow-lg' : ''
       }`}
     >
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-3">
         <button
           type="button"
-          className="cursor-grab active:cursor-grabbing bg-primary-light text-primary px-2 py-2 rounded-lg text-xs font-bold touch-none"
-          title="Long press and drag to reorder"
           {...attributes}
           {...listeners}
+          className="cursor-grab active:cursor-grabbing px-2 py-2 rounded-lg bg-church-lightblue text-primary font-bold"
+          title="Hold and drag to reorder"
         >
           ☰
         </button>
@@ -117,31 +242,30 @@ function SortableSection({
         <input
           list="section-suggestions"
           value={section.section_type}
-          onChange={e => updateSection(index, 'section_type', e.target.value)}
-          className="input-field text-sm flex-1"
-          placeholder="Verse 1, Verse 4, Chorus 2, Bridge..."
+          onChange={e => updateSectionType(index, e.target.value)}
+          className="input-field flex-1 text-sm"
+          placeholder="Verse 1, Chorus, Bridge..."
         />
 
-        {total > 1 && (
-          <button
-            type="button"
-            onClick={() => removeSection(index)}
-            className="text-red-400 hover:text-red-600 text-sm"
-          >
-            Remove
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => removeSection(index)}
+          className="text-red-400 hover:text-red-600 text-sm font-semibold px-2"
+        >
+          Remove
+        </button>
       </div>
 
       <textarea
         value={section.content}
-        onChange={e => updateSection(index, 'content', e.target.value)}
-        placeholder={`      G      G7       C          G
-Through many dangers, toils and snares
-           A    D
-We have already come`}
-        rows={6}
-        className="input-field font-mono text-sm resize-y"
+        onChange={e => updateSectionContent(index, e.target.value)}
+        className="input-field min-h-40 font-mono text-sm resize-y"
+        placeholder={`Example:
+
+G        C
+Amazing grace how sweet the sound
+G        D
+That saved a wretch like me`}
       />
     </div>
   );
@@ -152,13 +276,23 @@ export default function SongSectionsEditor({
   setSections,
 }: {
   sections: SongSection[];
-  setSections: React.Dispatch<React.SetStateAction<SongSection[]>>;
+  setSections: Dispatch<SetStateAction<SongSection[]>>;
 }) {
+  const [newSectionName, setNewSectionName] = useState('Verse 1');
+  const [showPasteBox, setShowPasteBox] = useState(false);
+  const [fullSongText, setFullSongText] = useState('');
+
+  useEffect(() => {
+    if (sections.some(section => !section.client_id)) {
+      setSections(prev => withClientIds(prev));
+    }
+  }, [sections, setSections]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        delay: 250,
-        tolerance: 8,
+        delay: 200,
+        tolerance: 5,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -166,13 +300,54 @@ export default function SongSectionsEditor({
     })
   );
 
-  const ids = sections.map(getSectionId);
+  function updateSectionType(index: number, value: string) {
+    setSections(prev =>
+      prev.map((section, sectionIndex) =>
+        sectionIndex === index ? { ...section, section_type: value } : section
+      )
+    );
+  }
 
-  function reorderWithCorrectOrder(items: SongSection[]) {
-    return items.map((section, index) => ({
-      ...section,
-      section_order: index,
-    }));
+  function updateSectionContent(index: number, value: string) {
+    setSections(prev =>
+      prev.map((section, sectionIndex) =>
+        sectionIndex === index ? { ...section, content: value } : section
+      )
+    );
+  }
+
+  function removeSection(index: number) {
+    setSections(prev => reorderSections(prev.filter((_, sectionIndex) => sectionIndex !== index)));
+  }
+
+  function addSection() {
+    const sectionName = newSectionName.trim();
+
+    if (!sectionName) {
+      toast.error('Section name is required');
+      return;
+    }
+
+    setSections(prev =>
+      reorderSections([
+        ...prev,
+        createSection(sectionName, prev.length),
+      ])
+    );
+  }
+
+  function handleAutoSplitSong() {
+    const parsed = parseFullSong(fullSongText);
+
+    if (parsed.length === 0) {
+      toast.error('Paste a song first');
+      return;
+    }
+
+    setSections(parsed);
+    setShowPasteBox(false);
+    setFullSongText('');
+    toast.success(`Created ${parsed.length} section${parsed.length > 1 ? 's' : ''}`);
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -180,64 +355,110 @@ export default function SongSectionsEditor({
 
     if (!over || active.id === over.id) return;
 
-    const oldIndex = ids.indexOf(String(active.id));
-    const newIndex = ids.indexOf(String(over.id));
+    setSections(prev => {
+      const oldIndex = prev.findIndex(section => (section.client_id || section.id) === active.id);
+      const newIndex = prev.findIndex(section => (section.client_id || section.id) === over.id);
 
-    if (oldIndex === -1 || newIndex === -1) return;
+      if (oldIndex === -1 || newIndex === -1) return prev;
 
-    setSections(prev => reorderWithCorrectOrder(arrayMove(prev, oldIndex, newIndex)));
-  }
-
-  function updateSection(index: number, key: keyof SongSection, value: string | number) {
-    setSections(prev =>
-      prev.map((section, i) =>
-        i === index ? { ...section, [key]: value } : section
-      )
-    );
-  }
-
-  function removeSection(index: number) {
-    setSections(prev =>
-      reorderWithCorrectOrder(prev.filter((_, i) => i !== index))
-    );
-  }
-
-  function addSection() {
-    setSections(prev =>
-      reorderWithCorrectOrder([
-        ...prev,
-        createSection(`Verse ${prev.length + 1}`, prev.length),
-      ])
-    );
+      return reorderSections(arrayMove(prev, oldIndex, newIndex));
+    });
   }
 
   return (
     <div className="card flex flex-col gap-4">
       <datalist id="section-suggestions">
-        {SECTION_SUGGESTIONS.map(type => (
-          <option key={type} value={type} />
+        {SECTION_SUGGESTIONS.map(section => (
+          <option key={section} value={section} />
         ))}
       </datalist>
 
-      <div className="flex justify-between items-center gap-3">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="font-semibold text-primary">Lyrics &amp; Chords</h2>
+          <h2 className="font-semibold text-primary">Song Sections</h2>
           <p className="text-xs text-gray-400">
-            Long press ☰ and drag to reorder. You can type custom labels like Verse 4 or Chorus 2.
+            Add sections manually or paste a full song and auto-split it.
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setShowPasteBox(prev => !prev)}
+          className="btn-secondary text-sm"
+        >
+          {showPasteBox ? 'Hide Paste Box' : 'Paste Full Song'}
+        </button>
       </div>
 
+      {showPasteBox && (
+        <div className="border border-primary/20 bg-primary-light rounded-xl p-3 flex flex-col gap-3">
+          <div>
+            <h3 className="font-semibold text-church-navy text-sm">
+              Paste the whole song here
+            </h3>
+            <p className="text-xs text-gray-500">
+              Best format: use headings like Verse 1, Chorus, Bridge, Intro, Outro, Tag.
+            </p>
+          </div>
+
+          <textarea
+            value={fullSongText}
+            onChange={e => setFullSongText(e.target.value)}
+            className="input-field min-h-64 font-mono text-sm resize-y bg-white"
+            placeholder={`Example:
+
+Verse 1
+G        C
+Amazing grace how sweet the sound
+G        D
+That saved a wretch like me
+
+Chorus
+C        G
+How great is our God
+D        Em
+Sing with me how great is our God
+
+Bridge
+Em       C
+Name above all names
+G        D
+Worthy of all praise`}
+          />
+
+          <div className="flex gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={handleAutoSplitSong}
+              className="btn-primary text-sm flex-1"
+            >
+              Auto Split to Sections
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFullSongText('')}
+              className="btn-secondary text-sm"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+        <SortableContext
+          items={sections.map(section => section.client_id || section.id || '')}
+          strategy={verticalListSortingStrategy}
+        >
           <div className="flex flex-col gap-3">
             {sections.map((section, index) => (
               <SortableSection
-                key={getSectionId(section, index)}
+                key={section.client_id || section.id || index}
                 section={section}
                 index={index}
-                total={sections.length}
-                updateSection={updateSection}
+                updateSectionType={updateSectionType}
+                updateSectionContent={updateSectionContent}
                 removeSection={removeSection}
               />
             ))}
@@ -245,9 +466,19 @@ export default function SongSectionsEditor({
         </SortableContext>
       </DndContext>
 
-      <button type="button" onClick={addSection} className="btn-secondary text-sm w-full">
-        + Add Section
-      </button>
+      <div className="flex gap-2 flex-wrap">
+        <input
+          list="section-suggestions"
+          value={newSectionName}
+          onChange={e => setNewSectionName(e.target.value)}
+          className="input-field flex-1 min-w-40"
+          placeholder="Verse 1, Chorus, Bridge..."
+        />
+
+        <button type="button" onClick={addSection} className="btn-secondary">
+          + Add Section
+        </button>
+      </div>
     </div>
   );
 }
