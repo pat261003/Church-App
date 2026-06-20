@@ -6,6 +6,7 @@ const links = [
   { to: '/attendance', label: 'Attendance' },
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/songs', label: 'Songs' },
+  { to: '/lineups', label: 'Lineup' },
 ];
 
 export default function Navbar() {

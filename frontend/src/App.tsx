@@ -12,6 +12,11 @@ import EditSong from './pages/EditSong';
 import PrintAttendance from './pages/PrintAttendance';
 import PrintSong from './pages/PrintSong';
 import { pingServer } from './api/attendance';
+import LineupList from './pages/LineupList';
+import AddLineup from './pages/AddLineup';
+import EditLineup from './pages/EditLineup';
+import LineupDetail from './pages/LineupDetail';
+import PrintLineup from './pages/PrintLineup';
 
 export default function App() {
   useEffect(() => {
@@ -33,6 +38,11 @@ export default function App() {
             <Route path="/songs/:id/edit" element={<EditSong />} />
             <Route path="/print/attendance" element={<PrintAttendance />} />
             <Route path="/print/song/:id" element={<PrintSong />} />
+            <Route path="/lineups" element={<LineupList />} />
+            <Route path="/lineups/add" element={<AddLineup />} />
+            <Route path="/lineups/:id" element={<LineupDetail />} />
+            <Route path="/lineups/:id/edit" element={<EditLineup />} />
+            <Route path="/print/lineup/:id" element={<PrintLineup />} />
           </Routes>
         </main>
         <Toaster

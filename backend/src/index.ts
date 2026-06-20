@@ -5,7 +5,7 @@ import rateLimit from 'express-rate-limit';
 import attendanceRouter from './routes/attendance';
 import songsRouter from './routes/songs';
 import { errorHandler } from './middleware/errorHandler';
-
+import lineupsRouter from './routes/lineups';
 dotenv.config();
 
 const app = express();
@@ -54,6 +54,7 @@ app.get('/health', (_req, res) => {
 // Routes
 app.use('/api/attendance', attendanceRouter);
 app.use('/api/songs', songsRouter);
+app.use('/api/lineups', lineupsRouter);
 
 // 404
 app.use((_req, res) => {
