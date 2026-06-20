@@ -3,8 +3,32 @@ import { Link } from 'react-router-dom';
 import { fetchLineup, fetchLineups } from '../api/lineups';
 import { ServiceLineup } from '../types';
 
-function formatDate(dateString: string) {
-  return new Date(`${dateString}T00:00:00`).toLocaleDateString('en-PH', {
+function getDateOnly(dateValue: string | null | undefined) {
+  if (!dateValue) return '';
+
+  return String(dateValue).slice(0, 10);
+}
+
+function getSafeDate(dateValue: string | null | undefined) {
+  const dateOnly = getDateOnly(dateValue);
+
+  if (!dateOnly) return null;
+
+  const date = new Date(`${dateOnly}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
+}
+
+function formatDate(dateValue: string | null | undefined) {
+  const date = getSafeDate(dateValue);
+
+  if (!date) return 'No date set';
+
+  return date.toLocaleDateString('en-PH', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -18,10 +42,17 @@ function chooseFeaturedLineup(lineups: ServiceLineup[]) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const datedLineups = lineups.map(lineup => ({
-    lineup,
-    date: new Date(`${lineup.service_date}T00:00:00`),
-  }));
+  const datedLineups = lineups
+    .map(lineup => ({
+      lineup,
+      date: getSafeDate(lineup.service_date),
+    }))
+    .filter(item => item.date !== null) as {
+      lineup: ServiceLineup;
+      date: Date;
+    }[];
+
+  if (datedLineups.length === 0) return lineups[0];
 
   const upcoming = datedLineups
     .filter(item => item.date >= today)
