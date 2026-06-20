@@ -29,9 +29,11 @@ function PrintSection({ section, currentKey, originalKey }: {
       <div className="inline-block bg-gray-800 text-white text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wider mb-1">
         {section.section_type}
       </div>
-      <div className="font-mono text-sm leading-relaxed whitespace-pre-wrap pl-1">
+      <div className="song-lyrics font-mono text-sm leading-relaxed pl-1 max-w-full">
         {content.split('\n').map((line, i) => (
-          <div key={i}>{renderLine(line)}</div>
+          <div key={i} className="song-line">
+            {line || ' '}
+          </div>
         ))}
       </div>
     </div>

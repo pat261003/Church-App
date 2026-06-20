@@ -24,5 +24,5 @@ export const updateSong = (
 export const deleteSong = (id: string) =>
   api.delete(`/api/songs/${id}`).then(r => r.data);
 
-export const getSongExportUrl = (id: string): string =>
-  `${BASE}/api/songs/${id}/export`;
+export const getSongDocxExportUrl = (id: string): string =>
+  `${BASE}/api/songs/${id}/export/docx`;

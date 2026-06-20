@@ -3,6 +3,7 @@ import { body, param, query as qv } from 'express-validator';
 import { validate } from '../middleware/validate';
 import { query } from '../db';
 import { normalizeName } from '../utils/normalize';
+import ExcelJS from 'exceljs';
 
 const router = Router();
 
@@ -179,6 +180,92 @@ router.get('/export/csv', async (req: Request, res: Response) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Failed to export CSV' });
+  }
+});
+
+// GET /api/attendance/export/xlsx?date=YYYY-MM-DD or ?month=MM&year=YYYY
+router.get('/export/xlsx', async (req: Request, res: Response) => {
+  try {
+    const { date, month, year } = req.query;
+
+    let rows;
+    let filename = 'attendance';
+
+    if (date) {
+      const result = await query(
+        `SELECT full_name, attendance_date, entered_at, ministry_group, notes
+         FROM attendance
+         WHERE attendance_date = $1
+         ORDER BY entered_at ASC`,
+        [date]
+      );
+
+      rows = result.rows;
+      filename = `attendance_${date}`;
+    } else if (month && year) {
+      const result = await query(
+        `SELECT full_name, attendance_date, entered_at, ministry_group, notes
+         FROM attendance
+         WHERE EXTRACT(MONTH FROM attendance_date) = $1
+           AND EXTRACT(YEAR FROM attendance_date) = $2
+         ORDER BY attendance_date ASC, entered_at ASC`,
+        [month, year]
+      );
+
+      rows = result.rows;
+      filename = `attendance_${year}_${String(month).padStart(2, '0')}`;
+    } else {
+      return res.status(400).json({ error: 'Provide date or month+year' });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Attendance');
+
+    worksheet.columns = [
+      { header: 'Name', key: 'full_name', width: 30 },
+      { header: 'Date', key: 'attendance_date', width: 20 },
+      { header: 'Time Entered', key: 'entered_at', width: 20 },
+      { header: 'Ministry/Group', key: 'ministry_group', width: 25 },
+      { header: 'Notes', key: 'notes', width: 40 },
+    ];
+
+    worksheet.getRow(1).font = { bold: true };
+
+    rows.forEach((row) => {
+      worksheet.addRow({
+        full_name: row.full_name,
+        attendance_date: new Date(row.attendance_date).toLocaleDateString('en-PH', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          timeZone: 'Asia/Manila',
+        }),
+        entered_at: new Date(row.entered_at).toLocaleTimeString('en-PH', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+          timeZone: 'Asia/Manila',
+        }),
+        ministry_group: row.ministry_group || '',
+        notes: row.notes || '',
+      });
+    });
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${filename}.xlsx"`
+    );
+
+    await workbook.xlsx.write(res);
+    return res.end();
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to export XLSX' });
   }
 });
 

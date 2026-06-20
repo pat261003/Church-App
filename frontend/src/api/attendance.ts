@@ -38,3 +38,7 @@ export const getCSVUrl = (date?: string, month?: number, year?: number): string 
   if (date) return `${BASE}/api/attendance/export/csv?date=${date}`;
   return `${BASE}/api/attendance/export/csv?month=${month}&year=${year}`;
 };
+export const getXLSXUrl = (date?: string, month?: number, year?: number): string => {
+  if (date) return `${BASE}/api/attendance/export/xlsx?date=${date}`;
+  return `${BASE}/api/attendance/export/xlsx?month=${month}&year=${year}`;
+};

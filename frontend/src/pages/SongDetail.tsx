@@ -5,7 +5,7 @@ import { fetchSong } from '../api/songs';
 import { Song, SongSection } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { transposeLyrics, transposeKey, ALL_KEYS, isChordLine } from '../utils/transpose';
-import { getSongExportUrl } from '../api/songs';
+import { getSongDocxExportUrl } from '../api/songs';
 
 
 
@@ -18,13 +18,15 @@ function LyricsSection({ section, currentKey, originalKey }: {
 
   return (
     <div className="mb-5">
-      <span className="section-label mb-2 inline-block">{section.section_type}</span>
+      <span className="section-label mb-2 inline-block">
+        {section.section_type}
+      </span>
 
-      <div className="font-mono text-sm leading-relaxed bg-church-lightblue rounded-lg p-3 overflow-x-auto">
+      <div className="song-lyrics font-mono text-[12px] sm:text-sm leading-6 bg-church-lightblue rounded-lg p-3 max-w-full">
         {content.split('\n').map((line, i) => (
           <div
             key={i}
-            className={`whitespace-pre ${isChordLine(line) ? 'text-primary font-bold' : 'text-church-navy'}`}
+            className={`song-line ${isChordLine(line) ? 'text-primary font-bold' : 'text-church-navy'}`}
           >
             {line || ' '}
           </div>
@@ -86,7 +88,7 @@ export default function SongDetail() {
         <div className="flex gap-2 flex-wrap">
           <Link to={`/songs/${id}/edit`} className="btn-secondary text-xs">Edit</Link>
           <Link to={`/print/song/${id}`} target="_blank" className="btn-secondary text-xs">Print</Link>
-          <a href={getSongExportUrl(id!)} download className="btn-secondary text-xs">Export .txt</a>
+          <a href={getSongDocxExportUrl(id!)} download className="btn-secondary text-xs">Export DOCX</a>
           <Link to="/songs" className="btn-secondary text-xs">← Back</Link>
         </div>
       </div>

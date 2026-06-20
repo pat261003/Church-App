@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { fetchStats, fetchAttendance, fetchMonthAttendance, getCSVUrl } from '../api/attendance';
+import { fetchStats, fetchAttendance, fetchMonthAttendance, getCSVUrl, getXLSXUrl } from '../api/attendance';
 import { AttendanceStats, AttendanceRecord } from '../types';
 import StatCard from '../components/StatCard';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -49,6 +49,13 @@ export default function AttendanceDashboard() {
     window.open(getCSVUrl(undefined, month, year), '_blank');
   }
 
+  function handleXLSXDate() {
+  window.open(getXLSXUrl(date), '_blank');
+}
+
+function handleXLSXMonth() {
+  window.open(getXLSXUrl(undefined, month, year), '_blank');
+}
   const monthNames = [
     '', 'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -146,6 +153,9 @@ export default function AttendanceDashboard() {
             <button onClick={handleCSVDate} className="btn-secondary text-xs">
               Export Date CSV
             </button>
+            <button onClick={handleXLSXDate} className="btn-secondary text-xs">
+              Export Date XLSX
+            </button>
             <Link
               to={`/print/attendance?date=${date}`}
               target="_blank"
@@ -194,6 +204,9 @@ export default function AttendanceDashboard() {
           </h2>
           <button onClick={handleCSVMonth} className="btn-secondary text-xs">
             Export Month CSV
+          </button>
+          <button onClick={handleXLSXMonth} className="btn-secondary text-xs">
+            Export Month XLSX
           </button>
         </div>
 

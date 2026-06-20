@@ -42,3 +42,19 @@
   body { background: white; font-size: 12pt; }
   .card { box-shadow: none; border: 1px solid #ccc; }
 }
+.song-lyrics {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.song-line {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@supports (white-space: break-spaces) {
+  .song-line {
+    white-space: break-spaces;
+  }
+}

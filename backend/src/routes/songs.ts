@@ -3,6 +3,7 @@ import { body, param } from 'express-validator';
 import { validate } from '../middleware/validate';
 import { query } from '../db';
 import { normalizeTitle } from '../utils/normalize';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 
 const router = Router();
 
@@ -67,10 +68,11 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/songs/:id/export
-router.get('/:id/export', async (req: Request, res: Response) => {
+// // GET /api/songs/:id/export/docx
+router.get('/:id/export/docx', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+
     const [songResult, sectionsResult] = await Promise.all([
       query(`SELECT * FROM songs WHERE id = $1`, [id]),
       query(
@@ -86,26 +88,98 @@ router.get('/:id/export', async (req: Request, res: Response) => {
     const song = songResult.rows[0];
     const sections = sectionsResult.rows;
 
-    let text = `TITLE: ${song.title}\n`;
-    text += `KEY: ${song.current_key || song.original_key}\n`;
-    if (song.artist) text += `ARTIST: ${song.artist}\n`;
-    if (song.tags) text += `TAGS: ${song.tags}\n`;
-    text += '\n';
+    const children: Paragraph[] = [];
 
-    sections.forEach((s) => {
-      text += `[${s.section_type.toUpperCase()}]\n`;
-      text += s.content + '\n\n';
+    children.push(
+      new Paragraph({
+        text: song.title,
+        heading: HeadingLevel.TITLE,
+      })
+    );
+
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: `Key: ${song.current_key || song.original_key}`,
+            bold: true,
+          }),
+        ],
+      })
+    );
+
+    if (song.artist) {
+      children.push(
+        new Paragraph({
+          children: [new TextRun(`Artist: ${song.artist}`)],
+        })
+      );
+    }
+
+    if (song.tags) {
+      children.push(
+        new Paragraph({
+          children: [new TextRun(`Tags: ${song.tags}`)],
+        })
+      );
+    }
+
+    children.push(new Paragraph({ text: '' }));
+
+    sections.forEach((section) => {
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: `[${section.section_type}]`,
+              bold: true,
+            }),
+          ],
+          spacing: { before: 300, after: 120 },
+        })
+      );
+
+      section.content.split('\n').forEach((line: string) => {
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: line || ' ',
+                font: 'Courier New',
+              }),
+            ],
+            spacing: { after: 0 },
+          })
+        );
+      });
     });
 
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    const doc = new Document({
+      sections: [
+        {
+          properties: {},
+          children,
+        },
+      ],
+    });
+
+    const buffer = await Packer.toBuffer(doc);
+
+    const safeTitle = song.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    );
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="${song.title.replace(/[^a-z0-9]/gi, '_')}.txt"`
+      `attachment; filename="${safeTitle}.docx"`
     );
-    return res.send(text);
+
+    return res.send(buffer);
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: 'Failed to export song' });
+    return res.status(500).json({ error: 'Failed to export song as DOCX' });
   }
 });
 
