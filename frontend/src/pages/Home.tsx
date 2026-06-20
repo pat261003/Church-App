@@ -5,7 +5,7 @@ export default function Home() {
     <div className="flex flex-col items-center gap-8 py-6">
       {/* Hero */}
       <div className="text-center max-w-lg">
-        <img src="../public/logo.jpg" alt="FGFTI" className="mx-auto h-24 w-24 mb-4 rounded-full shadow-md" />
+        <img src="/logo.jpg" alt="FGFTI" className="mx-auto h-24 w-24 mb-4 rounded-full shadow-md" />
         <h1 className="text-3xl font-bold text-primary mb-2">
           Full Gospel Faith Temple Inc.
         </h1>

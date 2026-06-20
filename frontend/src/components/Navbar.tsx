@@ -17,7 +17,7 @@ export default function Navbar() {
       <div className="max-w-5xl mx-auto px-4 flex items-center justify-between h-14">
         {/* Logo + Title */}
         <Link to="/" className="flex items-center gap-2 shrink-0" onClick={() => setOpen(false)}>
-          <img src="../public/logo.jpg" alt="FGFT Logo" className="h-8 w-8 rounded-full object-cover" />
+          <img src="/logo.jpg" alt="FGFT Logo" className="h-8 w-8 rounded-full object-cover" />
           <span className="text-white font-bold text-sm leading-tight hidden sm:block">
             FGFT Church App
           </span>
