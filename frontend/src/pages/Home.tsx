@@ -1,6 +1,69 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { fetchLineup, fetchLineups } from '../api/lineups';
+import { ServiceLineup } from '../types';
+
+function formatDate(dateString: string) {
+  return new Date(`${dateString}T00:00:00`).toLocaleDateString('en-PH', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+function chooseFeaturedLineup(lineups: ServiceLineup[]) {
+  if (lineups.length === 0) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const datedLineups = lineups.map(lineup => ({
+    lineup,
+    date: new Date(`${lineup.service_date}T00:00:00`),
+  }));
+
+  const upcoming = datedLineups
+    .filter(item => item.date >= today)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  if (upcoming.length > 0) {
+    return upcoming[0].lineup;
+  }
+
+  const latestPast = datedLineups.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+  return latestPast[0].lineup;
+}
 
 export default function Home() {
+  const [featuredLineup, setFeaturedLineup] = useState<ServiceLineup | null>(null);
+  const [loadingLineup, setLoadingLineup] = useState(true);
+
+  useEffect(() => {
+    async function loadFeaturedLineup() {
+      try {
+        const lineups = await fetchLineups();
+        const selectedLineup = chooseFeaturedLineup(lineups);
+
+        if (!selectedLineup) {
+          setFeaturedLineup(null);
+          return;
+        }
+
+        const fullLineup = await fetchLineup(selectedLineup.id);
+        setFeaturedLineup(fullLineup);
+      } catch (err) {
+        console.error('Failed to load featured lineup:', err);
+        setFeaturedLineup(null);
+      } finally {
+        setLoadingLineup(false);
+      }
+    }
+
+    loadFeaturedLineup();
+  }, []);
+
   return (
     <div className="flex flex-col items-center gap-6 sm:gap-8 py-4 sm:py-6">
       {/* Hero */}
@@ -18,6 +81,80 @@ export default function Home() {
         <p className="text-gray-500 text-sm">
           Church Attendance &amp; Lyrics System · Est. 1967
         </p>
+      </div>
+
+      {/* Featured Song Lineup */}
+      <div className="w-full max-w-4xl">
+        {loadingLineup ? (
+          <div className="card text-center">
+            <p className="text-sm text-gray-500">Loading song lineup...</p>
+          </div>
+        ) : featuredLineup ? (
+          <Link
+            to={`/lineups/${featuredLineup.id}`}
+            className="card block hover:shadow-lg transition-shadow active:scale-[0.99] border-l-4 border-primary"
+          >
+            <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+              <div>
+                <p className="text-xs font-bold text-primary uppercase tracking-wide mb-1">
+                  Current / Upcoming Song Lineup
+                </p>
+
+                <h2 className="text-xl font-bold text-church-navy">
+                  {featuredLineup.title}
+                </h2>
+
+                <p className="text-sm text-gray-500">
+                  {formatDate(featuredLineup.service_date)}
+                </p>
+              </div>
+
+              <div className="bg-primary-light px-3 py-2 rounded-xl text-right">
+                <p className="text-xs text-gray-500">Song Leader</p>
+                <p className="font-bold text-primary">
+                  {featuredLineup.song_leader}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {featuredLineup.sections.map(section => (
+                <div key={section.id || section.section_name}>
+                  <p className="text-xs font-bold text-primary mb-1">
+                    {section.section_name}
+                  </p>
+
+                  <div className="flex flex-col gap-1">
+                    {section.songs.map((song, index) => (
+                      <p key={song.id || `${section.section_name}-${index}`} className="text-sm text-church-navy">
+                        <span className="font-semibold">{index + 1}. {song.title}</span>
+                        <span className="text-gray-400">
+                          {' '}· Key: {song.key_override || song.current_key || song.original_key || '—'}
+                        </span>
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs text-gray-400 mt-4">
+              Tap to open full lineup and song links.
+            </p>
+          </Link>
+        ) : (
+          <Link
+            to="/lineups/add"
+            className="card block text-center hover:shadow-md transition-shadow active:scale-[0.99] border-l-4 border-primary"
+          >
+            <h2 className="text-lg font-bold text-church-navy mb-1">
+              No Song Lineup Yet
+            </h2>
+            <p className="text-sm text-gray-500">
+              Create a lineup so the song leader and songs appear here.
+            </p>
+          </Link>
+        )}
       </div>
 
       {/* Cards */}
