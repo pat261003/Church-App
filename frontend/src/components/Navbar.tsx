@@ -1,17 +1,94 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
-const links = [
-  { to: '/', label: 'Home', shortLabel: 'Home' },
-  { to: '/attendance', label: 'Attendance', shortLabel: 'Attend' },
-  { to: '/dashboard', label: 'Dashboard', shortLabel: 'Stats' },
-  { to: '/songs', label: 'Songs', shortLabel: 'Songs' },
-  { to: '/lineups', label: 'Lineup', shortLabel: 'Lineup' },
+type IconName = 'home' | 'attendance' | 'dashboard' | 'songs' | 'lineup';
+
+const links: {
+  to: string;
+  label: string;
+  shortLabel: string;
+  icon: IconName;
+  quick: boolean;
+}[] = [
+  { to: '/', label: 'Home', shortLabel: 'Home', icon: 'home', quick: true },
+  { to: '/attendance', label: 'Attendance', shortLabel: 'Attend', icon: 'attendance', quick: true },
+  { to: '/dashboard', label: 'Dashboard', shortLabel: 'Stats', icon: 'dashboard', quick: false },
+  { to: '/songs', label: 'Songs', shortLabel: 'Songs', icon: 'songs', quick: true },
+  { to: '/lineups', label: 'Lineup', shortLabel: 'Lineup', icon: 'lineup', quick: true },
 ];
+
+function NavIcon({ name, active }: { name: IconName; active: boolean }) {
+  const className = `w-5 h-5 ${active ? 'text-white' : 'text-gray-500'}`;
+
+  if (name === 'home') {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M3 12l9-9 9 9M5 10v10h14V10M9 20v-6h6v6"
+        />
+      </svg>
+    );
+  }
+
+  if (name === 'attendance') {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M17 20h5v-2a4 4 0 00-4-4h-1M9 20H4v-2a4 4 0 014-4h1M12 12a4 4 0 100-8 4 4 0 000 8z"
+        />
+      </svg>
+    );
+  }
+
+  if (name === 'dashboard') {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M4 19V5m0 14h16M8 17v-6m4 6V7m4 10v-3"
+        />
+      </svg>
+    );
+  }
+
+  if (name === 'songs') {
+    return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M9 5h10M9 9h10M9 13h10M5 5h.01M5 9h.01M5 13h.01M4 19h16"
+      />
+    </svg>
+  );
+}
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+
+  const quickLinks = links.filter(link => link.quick);
 
   function isActive(to: string) {
     if (to === '/') return pathname === '/';
@@ -110,23 +187,36 @@ export default function Navbar() {
         )}
       </nav>
 
-      {/* Mobile bottom quick navigation */}
-      <div className="no-print md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-church-border shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
-        <div className="grid grid-cols-5">
-          {links.map(l => (
-            <Link
-              key={l.to}
-              to={l.to}
-              onClick={() => setOpen(false)}
-              className={`py-2.5 text-center text-[11px] font-bold transition-colors ${
-                isActive(l.to)
-                  ? 'text-primary bg-primary-light'
-                  : 'text-gray-500 hover:text-primary'
-              }`}
-            >
-              {l.shortLabel}
-            </Link>
-          ))}
+      {/* Improved mobile bottom quick navigation */}
+      <div className="no-print md:hidden fixed bottom-3 left-3 right-3 z-50">
+        <div className="bg-white/95 backdrop-blur border border-church-border rounded-2xl shadow-lg px-2 py-2">
+          <div className="grid grid-cols-4 gap-1">
+            {quickLinks.map(l => {
+              const active = isActive(l.to);
+
+              return (
+                <Link
+                  key={l.to}
+                  to={l.to}
+                  onClick={() => setOpen(false)}
+                  className={`flex flex-col items-center justify-center gap-1 rounded-xl py-2 transition-all ${
+                    active
+                      ? 'bg-primary text-white shadow-sm scale-[1.02]'
+                      : 'text-gray-500 hover:bg-primary-light hover:text-primary'
+                  }`}
+                >
+                  <NavIcon name={l.icon} active={active} />
+                  <span
+                    className={`text-[10px] font-bold leading-none ${
+                      active ? 'text-white' : 'text-gray-500'
+                    }`}
+                  >
+                    {l.shortLabel}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
     </>
