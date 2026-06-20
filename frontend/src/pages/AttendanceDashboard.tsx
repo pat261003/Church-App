@@ -61,6 +61,16 @@ function handleXLSXMonth() {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
+  const maleCount = records.filter(
+  r => (r.ministry_group || '').toLowerCase() === 'male'
+  ).length;
+
+  const safeStats = stats;
+
+const femaleCount = records.filter(
+  r => (r.ministry_group || '').toLowerCase() === 'female'
+  ).length;
+
   if (loading) return <LoadingSpinner label="Loading dashboard..." />;
 
   return (
@@ -91,15 +101,38 @@ function handleXLSXMonth() {
       </div>
 
       {/* Stats cards */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="Today's Attendance" value={stats.todayCount} />
-          <StatCard label={`Attendance on ${date}`} value={stats.dateCount} color="bg-blue-400" />
-          <StatCard label={`${monthNames[month]} ${year}`} value={stats.monthCount} color="bg-green-400" />
+      {safeStats && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <StatCard label="Today's Attendance" value={safeStats.todayCount} />
+
+          <StatCard
+            label={`Attendance on ${date}`}
+            value={safeStats.dateCount}
+            color="bg-blue-400"
+          />
+
+          <StatCard
+            label="Men"
+            value={maleCount}
+            color="bg-indigo-400"
+          />
+
+          <StatCard
+            label="Women"
+            value={femaleCount}
+            color="bg-pink-400"
+          />
+
+          <StatCard
+            label={`${monthNames[month]} ${year}`}
+            value={safeStats.monthCount}
+            color="bg-green-400"
+          />
+
           <StatCard
             label="Earliest Attendee"
-            value={stats.earliest?.full_name || '—'}
-            sub={stats.earliest ? formatTimePH(stats.earliest.entered_at) : undefined}
+            value={safeStats.earliest?.full_name || '—'}
+            sub={safeStats.earliest ? formatTimePH(safeStats.earliest.entered_at) : undefined}
             color="bg-yellow-400"
           />
         </div>
@@ -175,7 +208,7 @@ function handleXLSXMonth() {
                 <tr className="border-b border-church-border">
                   <th className="text-left py-2 px-3 text-gray-500">#</th>
                   <th className="text-left py-2 px-3 text-gray-500">Name</th>
-                  <th className="text-left py-2 px-3 text-gray-500 hidden sm:table-cell">Group</th>
+                  <th className="text-left py-2 px-3 text-gray-500 hidden sm:table-cell">Gender</th>
                   <th className="text-left py-2 px-3 text-gray-500">Time</th>
                 </tr>
               </thead>

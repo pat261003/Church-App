@@ -49,7 +49,9 @@ export default function Attendance() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
     if (!fullName.trim()) return toast.error('Full name is required');
+    if (!ministry) return toast.error('Gender is required');
 
     setSubmitting(true);
     try {
@@ -60,8 +62,13 @@ export default function Attendance() {
         ministry_group: ministry,
         notes,
       });
+
       setRecords(prev => [...prev, record]);
-      setFullName(''); setContact(''); setMinistry(''); setNotes('');
+      setFullName('');
+      setContact('');
+      setMinistry('');
+      setNotes('');
+
       toast.success(`${record.full_name} registered at ${formatTimePH(record.entered_at)}`);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
@@ -81,7 +88,10 @@ export default function Attendance() {
 
   async function handleUpdate() {
     if (!editId || !editName.trim()) return toast.error('Name is required');
+    if (!editMinistry) return toast.error('Gender is required');
+
     setEditConfirm(false);
+
     try {
       const updated = await updateAttendance(editId, {
         full_name: editName,
@@ -89,6 +99,7 @@ export default function Attendance() {
         ministry_group: editMinistry,
         notes: editNotes,
       });
+
       setRecords(prev => prev.map(r => r.id === editId ? updated : r));
       setEditId(null);
       toast.success('Updated successfully');
@@ -100,6 +111,7 @@ export default function Attendance() {
 
   async function handleDelete() {
     if (!deleteTarget) return;
+
     try {
       await deleteAttendance(deleteTarget.id);
       setRecords(prev => prev.filter(r => r.id !== deleteTarget.id));
@@ -116,10 +128,19 @@ export default function Attendance() {
     (r.ministry_group || '').toLowerCase().includes(search.toLowerCase())
   );
 
+  const maleCount = records.filter(r => (r.ministry_group || '').toLowerCase() === 'male').length;
+  const femaleCount = records.filter(r => (r.ministry_group || '').toLowerCase() === 'female').length;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-church-navy">Sunday Attendance</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-church-navy">Sunday Attendance</h1>
+          <p className="text-sm text-gray-500">
+            Male: {maleCount} · Female: {femaleCount}
+          </p>
+        </div>
+
         <input
           type="date"
           value={date}
@@ -131,6 +152,7 @@ export default function Attendance() {
       {/* Form */}
       <form onSubmit={handleSubmit} className="card">
         <h2 className="font-semibold text-primary mb-4">Register Attendee</h2>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="sm:col-span-2">
             <label className="text-sm font-medium text-gray-600 mb-1 block">
@@ -144,8 +166,11 @@ export default function Attendance() {
               autoComplete="name"
             />
           </div>
+
           <div>
-            <label className="text-sm font-medium text-gray-600 mb-1 block">Contact Number</label>
+            <label className="text-sm font-medium text-gray-600 mb-1 block">
+              Contact Number
+            </label>
             <input
               value={contact}
               onChange={e => setContact(e.target.value)}
@@ -154,15 +179,22 @@ export default function Attendance() {
               type="tel"
             />
           </div>
+
           <div>
-            <label className="text-sm font-medium text-gray-600 mb-1 block">Ministry / Group</label>
-            <input
+            <label className="text-sm font-medium text-gray-600 mb-1 block">
+              Gender <span className="text-red-500">*</span>
+            </label>
+            <select
               value={ministry}
               onChange={e => setMinistry(e.target.value)}
-              placeholder="Optional"
               className="input-field"
-            />
+            >
+              <option value="">Select gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
           </div>
+
           <div className="sm:col-span-2">
             <label className="text-sm font-medium text-gray-600 mb-1 block">Notes</label>
             <input
@@ -173,6 +205,7 @@ export default function Attendance() {
             />
           </div>
         </div>
+
         <button type="submit" disabled={submitting} className="btn-primary mt-4 w-full sm:w-auto">
           {submitting ? 'Registering...' : 'Register Attendance'}
         </button>
@@ -184,10 +217,11 @@ export default function Attendance() {
           <h2 className="font-semibold text-primary">
             {filtered.length} Attendee{filtered.length !== 1 ? 's' : ''} — {date}
           </h2>
+
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search name or group..."
+            placeholder="Search name or gender..."
             className="input-field w-full sm:w-64"
           />
         </div>
@@ -206,60 +240,115 @@ export default function Attendance() {
                 <tr className="border-b border-church-border">
                   <th className="text-left py-2 px-3 text-gray-500 font-medium">#</th>
                   <th className="text-left py-2 px-3 text-gray-500 font-medium">Name</th>
-                  <th className="text-left py-2 px-3 text-gray-500 font-medium hidden sm:table-cell">Group</th>
+                  <th className="text-left py-2 px-3 text-gray-500 font-medium hidden sm:table-cell">Gender</th>
                   <th className="text-left py-2 px-3 text-gray-500 font-medium">Time</th>
                   <th className="text-left py-2 px-3 text-gray-500 font-medium">Actions</th>
                 </tr>
               </thead>
+
               <tbody>
                 {filtered.map((r, i) => (
                   <tr key={r.id} className="border-b border-church-border/50 hover:bg-primary-light transition-colors">
                     {editId === r.id ? (
                       <>
                         <td className="py-2 px-3 text-gray-400">{i + 1}</td>
+
                         <td className="py-2 px-3" colSpan={2}>
                           <div className="flex flex-col gap-1">
-                            <input value={editName} onChange={e => setEditName(e.target.value)}
-                              className="input-field text-xs py-1" placeholder="Name" />
-                            <div className="flex gap-1">
-                              <input value={editContact} onChange={e => setEditContact(e.target.value)}
-                                className="input-field text-xs py-1" placeholder="Contact" />
-                              <input value={editMinistry} onChange={e => setEditMinistry(e.target.value)}
-                                className="input-field text-xs py-1" placeholder="Group" />
+                            <input
+                              value={editName}
+                              onChange={e => setEditName(e.target.value)}
+                              className="input-field text-xs py-1"
+                              placeholder="Name"
+                            />
+
+                            <div className="flex gap-1 flex-col sm:flex-row">
+                              <input
+                                value={editContact}
+                                onChange={e => setEditContact(e.target.value)}
+                                className="input-field text-xs py-1"
+                                placeholder="Contact"
+                              />
+
+                              <select
+                                value={editMinistry}
+                                onChange={e => setEditMinistry(e.target.value)}
+                                className="input-field text-xs py-1"
+                              >
+                                <option value="">Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                              </select>
                             </div>
-                            <input value={editNotes} onChange={e => setEditNotes(e.target.value)}
-                              className="input-field text-xs py-1" placeholder="Notes" />
+
+                            <input
+                              value={editNotes}
+                              onChange={e => setEditNotes(e.target.value)}
+                              className="input-field text-xs py-1"
+                              placeholder="Notes"
+                            />
                           </div>
                         </td>
+
                         <td className="py-2 px-3">{formatTimePH(r.entered_at)}</td>
+
                         <td className="py-2 px-3">
                           <div className="flex gap-1">
-                            <button onClick={() => setEditConfirm(true)}
-                              className="text-xs bg-primary text-white px-2 py-1 rounded">Save</button>
-                            <button onClick={() => setEditId(null)}
-                              className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">Cancel</button>
+                            <button
+                              onClick={() => setEditConfirm(true)}
+                              className="text-xs bg-primary text-white px-2 py-1 rounded"
+                            >
+                              Save
+                            </button>
+
+                            <button
+                              onClick={() => setEditId(null)}
+                              className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded"
+                            >
+                              Cancel
+                            </button>
                           </div>
                         </td>
                       </>
                     ) : (
                       <>
                         <td className="py-2 px-3 text-gray-400">{i + 1}</td>
+
                         <td className="py-2 px-3 font-medium">
                           {r.full_name}
+
+                          <div className="sm:hidden mt-1">
+                            <span className="text-[11px] bg-primary-light text-primary px-2 py-0.5 rounded-full">
+                              {r.ministry_group || 'No gender'}
+                            </span>
+                          </div>
+
                           {r.notes && <p className="text-xs text-gray-400">{r.notes}</p>}
                         </td>
+
                         <td className="py-2 px-3 text-gray-500 hidden sm:table-cell">
                           {r.ministry_group || '—'}
                         </td>
+
                         <td className="py-2 px-3 text-gray-500 whitespace-nowrap">
                           {formatTimePH(r.entered_at)}
                         </td>
+
                         <td className="py-2 px-3">
                           <div className="flex gap-1">
-                            <button onClick={() => startEdit(r)}
-                              className="text-xs text-primary hover:underline">Edit</button>
-                            <button onClick={() => setDeleteTarget(r)}
-                              className="text-xs text-red-500 hover:underline">Delete</button>
+                            <button
+                              onClick={() => startEdit(r)}
+                              className="text-xs text-primary hover:underline"
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              onClick={() => setDeleteTarget(r)}
+                              className="text-xs text-red-500 hover:underline"
+                            >
+                              Delete
+                            </button>
                           </div>
                         </td>
                       </>
@@ -283,6 +372,7 @@ export default function Attendance() {
           danger
         />
       )}
+
       {editConfirm && (
         <ConfirmModal
           title="Save Changes"

@@ -161,7 +161,7 @@ router.get('/export/csv', async (req: Request, res: Response) => {
       });
     };
 
-    const header = 'Name,Date,Time Entered,Ministry/Group,Notes\n';
+    const header = 'Name,Date,Time Entered,Gender,Notes\n';
     const csvRows = rows.map((r) =>
       [
         escapeCSV(r.full_name),
