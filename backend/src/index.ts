@@ -14,8 +14,10 @@ const PORT = process.env.PORT || 4000;
 // Trust proxy (Render uses reverse proxy)
 app.set('trust proxy', 1);
 
-// CORS
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(',');
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173')
+  .split(',')
+  .map(origin => origin.trim());
+
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -25,10 +27,12 @@ app.use(
         callback(new Error(`CORS blocked: ${origin}`));
       }
     },
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
+
+app.options('*', cors());
 
 // Rate limiting
 const limiter = rateLimit({
