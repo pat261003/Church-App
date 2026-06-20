@@ -23,6 +23,7 @@ export interface AttendanceStats {
 export interface SongSection {
   id?: string;
   song_id?: string;
+  client_id?: string;
   section_type: string;
   section_order: number;
   content: string;

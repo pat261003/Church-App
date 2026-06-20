@@ -1,15 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetchSong, updateSong } from '../api/songs';
 import { Song, SongSection } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { ALL_KEYS } from '../utils/transpose';
-
-const SECTION_TYPES = [
-  'Verse 1', 'Verse 2', 'Verse 3', 'Chorus', 'Pre-Chorus',
-  'Bridge', 'Ending', 'Instrumental', 'Other'
-];
+import SongSectionsEditor, { withClientIds } from '../components/SongSectionsEditor';
 
 export default function EditSong() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +22,7 @@ export default function EditSong() {
 
   useEffect(() => {
     if (!id) return;
+
     fetchSong(id)
       .then(data => {
         setSong(data);
@@ -33,32 +30,17 @@ export default function EditSong() {
         setOriginalKey(data.original_key);
         setArtist(data.artist || '');
         setTags(data.tags || '');
-        setSections(data.sections);
+        setSections(withClientIds(data.sections));
       })
       .catch(() => toast.error('Failed to load song'))
       .finally(() => setLoading(false));
   }, [id]);
 
-  function updateSection(idx: number, key: keyof SongSection, value: string | number) {
-    setSections(prev => prev.map((s, i) => i === idx ? { ...s, [key]: value } : s));
-  }
-
-  function addSection() {
-    setSections(prev => [
-      ...prev,
-      { section_type: 'Verse 1', section_order: prev.length, content: '' }
-    ]);
-  }
-
-  function removeSection(idx: number) {
-    setSections(prev => prev.filter((_, i) => i !== idx)
-      .map((s, i) => ({ ...s, section_order: i })));
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) return toast.error('Title is required');
     if (!id) return;
+    if (sections.some(s => !s.content.trim())) return toast.error('All sections need content');
 
     setSubmitting(true);
     try {
@@ -68,7 +50,10 @@ export default function EditSong() {
         current_key: originalKey,
         artist,
         tags,
-        sections,
+        sections: sections.map((section, index) => ({
+          ...section,
+          section_order: index,
+        })),
       });
       toast.success('Song updated!');
       navigate(`/songs/${updated.id}`);
@@ -90,73 +75,66 @@ export default function EditSong() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div className="card flex flex-col gap-3">
           <h2 className="font-semibold text-primary">Song Info</h2>
+
           <div>
             <label className="text-sm font-medium text-gray-600 mb-1 block">Title</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} className="input-field" />
+            <input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              className="input-field"
+            />
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-gray-600 mb-1 block">Key</label>
-              <select value={originalKey} onChange={e => setOriginalKey(e.target.value)} className="input-field">
-                {ALL_KEYS.map(k => <option key={k}>{k}</option>)}
+              <select
+                value={originalKey}
+                onChange={e => setOriginalKey(e.target.value)}
+                className="input-field"
+              >
+                {ALL_KEYS.map(k => <option key={k} value={k}>{k}</option>)}
               </select>
             </div>
+
             <div>
               <label className="text-sm font-medium text-gray-600 mb-1 block">Artist</label>
-              <input value={artist} onChange={e => setArtist(e.target.value)} className="input-field" placeholder="Optional" />
+              <input
+                value={artist}
+                onChange={e => setArtist(e.target.value)}
+                className="input-field"
+                placeholder="Optional"
+              />
             </div>
           </div>
+
           <div>
             <label className="text-sm font-medium text-gray-600 mb-1 block">Tags</label>
-            <input value={tags} onChange={e => setTags(e.target.value)} className="input-field" placeholder="Worship, Hymn..." />
+            <input
+              value={tags}
+              onChange={e => setTags(e.target.value)}
+              className="input-field"
+              placeholder="Worship, Hymn..."
+            />
           </div>
         </div>
 
-        <div className="card flex flex-col gap-4">
-          <div className="flex justify-between items-center">
-            <h2 className="font-semibold text-primary">Sections</h2>
-            <p className="text-xs text-gray-400">Put chords on the line above the lyrics</p>
-          </div>
+        <SongSectionsEditor sections={sections} setSections={setSections} />
 
-          {sections.map((s, i) => (
-            <div key={i} className="border border-church-border rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <select value={s.section_type}
-                    onChange={e => updateSection(i, 'section_type', e.target.value)}
-                        className="input-field w-auto text-sm">
-                        {SECTION_TYPES.map(t => <option key={t}>{t}</option>)}
-                    </select>
-                        {sections.length > 1 && (
-                        <button type="button" onClick={() => removeSection(i)}
-                            className="text-red-400 hover:text-red-600 text-sm ml-auto">
-                            Remove
-                        </button>
-                    )}
-                </div>
-                <textarea
-                    value={s.content}
-                    onChange={e => updateSection(i, 'content', e.target.value)}
-                    rows={5}
-                    className="input-field font-mono text-sm resize-y"
-                />
-                </div>
-            ))}
+        <div className="flex gap-3">
+          <button type="submit" disabled={submitting} className="btn-primary flex-1">
+            {submitting ? 'Saving...' : 'Save Changes'}
+          </button>
 
-            <button type="button" onClick={addSection} className="btn-secondary text-sm w-full">
-                + Add Section
-            </button>
-            </div>
-
-            <div className="flex gap-3">
-            <button type="submit" disabled={submitting} className="btn-primary flex-1">
-                {submitting ? 'Saving...' : 'Save Changes'}
-            </button>
-            <button type="button" onClick={() => navigate(`/songs/${id}`)} className="btn-secondary">
-                Cancel
-            </button>
-            </div>
-        </form>
+          <button
+            type="button"
+            onClick={() => navigate(`/songs/${id}`)}
+            className="btn-secondary"
+          >
+            Cancel
+          </button>
         </div>
-    );
-  }
-    
+      </form>
+    </div>
+  );
+}
