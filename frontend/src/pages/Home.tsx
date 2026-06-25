@@ -10,6 +10,8 @@ import {
   ServiceScheduleDate,
 } from '../types';
 
+import { getAttendanceGroupCounts } from '../utils/attendanceGroups';
+
 function formatLocalDate(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -72,18 +74,12 @@ function getLastSundayDate() {
 }
 
 function countGender(records: AttendanceRecord[]) {
-  const male = records.filter(
-    r => (r.ministry_group || '').toLowerCase() === 'male'
-  ).length;
-
-  const female = records.filter(
-    r => (r.ministry_group || '').toLowerCase() === 'female'
-  ).length;
+  const counts = getAttendanceGroupCounts(records);
 
   return {
     total: records.length,
-    male,
-    female,
+    male: counts.male,
+    female: counts.female,
   };
 }
 
@@ -266,20 +262,21 @@ function UpcomingScheduleCard({
           No assignments added yet for this Sunday.
         </div>
       ) : (
-        <div className="rounded-xl bg-church-lightblue p-3 flex flex-col gap-2">
+        <div className="rounded-xl bg-church-lightblue p-3 flex flex-col gap-1.5">
           {visibleAssignments.map(assignment => (
             <div
               key={assignment.id || `${assignment.position}-${assignment.person_name}`}
               className="bg-white rounded-lg px-3 py-2"
             >
-              <p className="text-sm text-church-navy leading-snug break-words">
-                <span className="font-bold text-primary">
+              <div className="grid grid-cols-[8.5rem_1fr] sm:grid-cols-[11rem_1fr] gap-2 items-start">
+                <p className="text-xs sm:text-sm font-bold text-primary leading-snug break-words">
                   {assignment.position}:
-                </span>{' '}
-                <span className="font-semibold">
+                </p>
+
+                <p className="text-xs sm:text-sm font-semibold text-church-navy leading-snug break-words">
                   {assignment.person_name}
-                </span>
-              </p>
+                </p>
+              </div>
             </div>
           ))}
         </div>

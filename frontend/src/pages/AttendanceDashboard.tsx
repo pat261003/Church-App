@@ -6,6 +6,7 @@ import StatCard from '../components/StatCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { formatTimePH, formatDatePH, getTodayDate, getCurrentMonth } from '../utils/csv';
 import { Link } from 'react-router-dom';
+import { getAttendanceGroupCounts } from '../utils/attendanceGroups';
 
 export default function AttendanceDashboard() {
   const today = getTodayDate();
@@ -61,15 +62,11 @@ function handleXLSXMonth() {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  const maleCount = records.filter(
-  r => (r.ministry_group || '').toLowerCase() === 'male'
-  ).length;
+  const groupCounts = getAttendanceGroupCounts(records);
 
   const safeStats = stats;
 
-const femaleCount = records.filter(
-  r => (r.ministry_group || '').toLowerCase() === 'female'
-  ).length;
+
 
   if (loading) return <LoadingSpinner label="Loading dashboard..." />;
 
@@ -102,40 +99,64 @@ const femaleCount = records.filter(
 
       {/* Stats cards */}
       {safeStats && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <StatCard label="Today's Attendance" value={safeStats.todayCount} />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <StatCard label="Today's Attendance" value={safeStats.todayCount} />
 
-          <StatCard
-            label={`Attendance on ${date}`}
-            value={safeStats.dateCount}
-            color="bg-blue-400"
-          />
+            <StatCard
+              label={`Attendance on ${date}`}
+              value={safeStats.dateCount}
+              color="bg-blue-400"
+            />
 
-          <StatCard
-            label="Men"
-            value={maleCount}
-            color="bg-indigo-400"
-          />
+            <StatCard
+              label="Male Total"
+              value={groupCounts.male}
+              color="bg-indigo-400"
+            />
 
-          <StatCard
-            label="Women"
-            value={femaleCount}
-            color="bg-pink-400"
-          />
+            <StatCard
+              label="Female Total"
+              value={groupCounts.female}
+              color="bg-pink-400"
+            />
 
-          <StatCard
-            label={`${monthNames[month]} ${year}`}
-            value={safeStats.monthCount}
-            color="bg-green-400"
-          />
+            <StatCard
+              label="Male Children"
+              value={groupCounts.maleChild}
+              color="bg-blue-300"
+            />
 
-          <StatCard
-            label="Earliest Attendee"
-            value={safeStats.earliest?.full_name || '—'}
-            sub={safeStats.earliest ? formatTimePH(safeStats.earliest.entered_at) : undefined}
-            color="bg-yellow-400"
-          />
-        </div>
+            <StatCard
+              label="Female Children"
+              value={groupCounts.femaleChild}
+              color="bg-pink-300"
+            />
+
+            <StatCard
+              label="Male Youth"
+              value={groupCounts.maleYouth}
+              color="bg-blue-500"
+            />
+
+            <StatCard
+              label="Female Youth"
+              value={groupCounts.femaleYouth}
+              color="bg-pink-500"
+            />
+
+            <StatCard
+              label={`${monthNames[month]} ${year}`}
+              value={safeStats.monthCount}
+              color="bg-green-400"
+            />
+
+            <StatCard
+              label="Earliest Attendee"
+              value={safeStats.earliest?.full_name || '—'}
+              sub={safeStats.earliest ? formatTimePH(safeStats.earliest.entered_at) : undefined}
+              color="bg-yellow-400"
+            />
+          </div>
       )}
 
       {/* Sunday stats */}

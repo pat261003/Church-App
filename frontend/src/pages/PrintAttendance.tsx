@@ -61,7 +61,7 @@ export default function PrintAttendance() {
           <tr className="bg-gray-100">
             <th className="border border-gray-300 px-3 py-2 text-left">#</th>
             <th className="border border-gray-300 px-3 py-2 text-left">Full Name</th>
-            <th className="border border-gray-300 px-3 py-2 text-left">Gender</th>
+            <th className="border border-gray-300 px-3 py-2 text-left">Age/Gender Group</th>
             <th className="border border-gray-300 px-3 py-2 text-left">Time Entered</th>
             <th className="border border-gray-300 px-3 py-2 text-left">Notes</th>
           </tr>

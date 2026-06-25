@@ -5,7 +5,7 @@ import { AttendanceRecord } from '../types';
 import ConfirmModal from '../components/ConfirmModal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { formatTimePH, getTodayDate } from '../utils/csv';
-import { checkScheduleAssignments } from '../api/schedules';
+import { ATTENDANCE_GROUPS, getAttendanceGroupCounts } from '../utils/attendanceGroups';
 
 export default function Attendance() {
   const today = getTodayDate();
@@ -15,20 +15,17 @@ export default function Attendance() {
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
 
-  // Form
   const [fullName, setFullName] = useState('');
   const [contact, setContact] = useState('');
   const [ministry, setMinistry] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Edit state
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editContact, setEditContact] = useState('');
   const [editMinistry, setEditMinistry] = useState('');
   const [editNotes, setEditNotes] = useState('');
 
-  // Confirm modal
   const [deleteTarget, setDeleteTarget] = useState<AttendanceRecord | null>(null);
   const [editConfirm, setEditConfirm] = useState(false);
 
@@ -52,7 +49,7 @@ export default function Attendance() {
     e.preventDefault();
 
     if (!fullName.trim()) return toast.error('Full name is required');
-    if (!ministry) return toast.error('Gender is required');
+    if (!ministry) return toast.error('Age/Gender group is required');
 
     setSubmitting(true);
     try {
@@ -71,22 +68,6 @@ export default function Attendance() {
       setNotes('');
 
       toast.success(`${record.full_name} registered at ${formatTimePH(record.entered_at)}`);
-    try {
-      const assignments = await checkScheduleAssignments(record.full_name, date);
-
-      if (assignments.length > 0) {
-        const assignmentText = assignments
-          .map(a => `${a.position}${a.activity ? ` — ${a.activity}` : ''}`)
-          .join(', ');
-
-        toast.success(
-          `Reminder: ${record.full_name} is assigned today for ${assignmentText}`,
-          { duration: 10000 }
-        );
-      }
-    } catch (err) {
-      console.error('Failed to check schedule assignment:', err);
-    }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       toast.error(msg || 'Failed to register attendance');
@@ -105,7 +86,7 @@ export default function Attendance() {
 
   async function handleUpdate() {
     if (!editId || !editName.trim()) return toast.error('Name is required');
-    if (!editMinistry) return toast.error('Gender is required');
+    if (!editMinistry) return toast.error('Age/Gender group is required');
 
     setEditConfirm(false);
 
@@ -145,8 +126,7 @@ export default function Attendance() {
     (r.ministry_group || '').toLowerCase().includes(search.toLowerCase())
   );
 
-  const maleCount = records.filter(r => (r.ministry_group || '').toLowerCase() === 'male').length;
-  const femaleCount = records.filter(r => (r.ministry_group || '').toLowerCase() === 'female').length;
+  const groupCounts = getAttendanceGroupCounts(records);
 
   return (
     <div className="flex flex-col gap-6">
@@ -154,7 +134,10 @@ export default function Attendance() {
         <div>
           <h1 className="text-2xl font-bold text-church-navy">Sunday Attendance</h1>
           <p className="text-sm text-gray-500">
-            Male: {maleCount} · Female: {femaleCount}
+            Male: {groupCounts.male} · Female: {groupCounts.female}
+          </p>
+          <p className="text-xs text-gray-400">
+            Male Children: {groupCounts.maleChild} · Female Children: {groupCounts.femaleChild} · Male Youth: {groupCounts.maleYouth} · Female Youth: {groupCounts.femaleYouth}
           </p>
         </div>
 
@@ -166,7 +149,6 @@ export default function Attendance() {
         />
       </div>
 
-      {/* Form */}
       <form onSubmit={handleSubmit} className="card">
         <h2 className="font-semibold text-primary mb-4">Register Attendee</h2>
 
@@ -199,16 +181,19 @@ export default function Attendance() {
 
           <div>
             <label className="text-sm font-medium text-gray-600 mb-1 block">
-              Gender <span className="text-red-500">*</span>
+              Age/Gender Group <span className="text-red-500">*</span>
             </label>
             <select
               value={ministry}
               onChange={e => setMinistry(e.target.value)}
               className="input-field"
             >
-              <option value="">Select gender</option>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
+              <option value="">Select group</option>
+              {ATTENDANCE_GROUPS.map(group => (
+                <option key={group} value={group}>
+                  {group}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -228,7 +213,6 @@ export default function Attendance() {
         </button>
       </form>
 
-      {/* Table */}
       <div className="card">
         <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
           <h2 className="font-semibold text-primary">
@@ -238,7 +222,7 @@ export default function Attendance() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search name or gender..."
+            placeholder="Search name or group..."
             className="input-field w-full sm:w-64"
           />
         </div>
@@ -257,7 +241,7 @@ export default function Attendance() {
                 <tr className="border-b border-church-border">
                   <th className="text-left py-2 px-3 text-gray-500 font-medium">#</th>
                   <th className="text-left py-2 px-3 text-gray-500 font-medium">Name</th>
-                  <th className="text-left py-2 px-3 text-gray-500 font-medium hidden sm:table-cell">Gender</th>
+                  <th className="text-left py-2 px-3 text-gray-500 font-medium hidden sm:table-cell">Group</th>
                   <th className="text-left py-2 px-3 text-gray-500 font-medium">Time</th>
                   <th className="text-left py-2 px-3 text-gray-500 font-medium">Actions</th>
                 </tr>
@@ -292,9 +276,12 @@ export default function Attendance() {
                                 onChange={e => setEditMinistry(e.target.value)}
                                 className="input-field text-xs py-1"
                               >
-                                <option value="">Gender</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
+                                <option value="">Group</option>
+                                {ATTENDANCE_GROUPS.map(group => (
+                                  <option key={group} value={group}>
+                                    {group}
+                                  </option>
+                                ))}
                               </select>
                             </div>
 
@@ -336,7 +323,7 @@ export default function Attendance() {
 
                           <div className="sm:hidden mt-1">
                             <span className="text-[11px] bg-primary-light text-primary px-2 py-0.5 rounded-full">
-                              {r.ministry_group || 'No gender'}
+                              {r.ministry_group || 'No group'}
                             </span>
                           </div>
 
@@ -378,7 +365,6 @@ export default function Attendance() {
         )}
       </div>
 
-      {/* Modals */}
       {deleteTarget && (
         <ConfirmModal
           title="Remove Attendee"
