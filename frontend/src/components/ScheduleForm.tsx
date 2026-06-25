@@ -26,8 +26,6 @@ const REQUIRED_FIELDS = [
 const OPTIONAL_FIELDS = [
   'Hymnal Song',
   'Prayer Request',
-  'Youth Bible Study',
-  'Adult Bible Study',
 ];
 
 const SCHEDULE_FIELDS = [
@@ -38,12 +36,7 @@ const SCHEDULE_FIELDS = [
   'Prayer Request',
   'Testimony',
   'Tithes & Offering',
-  'Scripture Reading',
   'Special Song',
-  'Kids',
-  'Teens',
-  'Youth Bible Study',
-  'Adult Bible Study',
   'Praises & Worship',
   'Message',
   'Closing Prayer',
@@ -86,33 +79,9 @@ const FIELD_ALIASES: Record<string, string[]> = {
     'offering',
     'tithes',
   ],
-  'Scripture Reading': [
-    'scripture reading',
-    'scripture',
-    'bible reading',
-  ],
   'Special Song': [
     'special song',
     'special number',
-  ],
-  'Kids': [
-    'kids',
-    'children',
-    'children ministry',
-  ],
-  'Teens': [
-    'teens',
-    'teen',
-  ],
-  'Youth Bible Study': [
-    'youth bible study',
-    'youth study',
-    'youth',
-  ],
-  'Adult Bible Study': [
-    'adult bible study',
-    'adult study',
-    'adults',
   ],
   'Praises & Worship': [
     'praises & worship',
@@ -147,6 +116,23 @@ const ACTIVITY_ALIASES = [
   'prayer for anniversary',
   'birthday prayer',
   'anniversary prayer',
+];
+
+const REMOVED_FIELD_ALIASES = [
+  'scripture reading',
+  'scripture',
+  'bible reading',
+  'kids',
+  'children',
+  'children ministry',
+  'teens',
+  'teen',
+  'youth bible study',
+  'youth study',
+  'youth',
+  'adult bible study',
+  'adult study',
+  'adults',
 ];
 
 type ParsedPastedSchedule = {
@@ -280,6 +266,7 @@ function reorderDates(dates: ServiceScheduleDate[]) {
     activity: date.activity || '',
     date_order: dateIndex,
     assignments: [...date.assignments]
+      .filter(assignment => SCHEDULE_FIELDS.includes(assignment.position))
       .sort((a, b) => {
         const aIndex = SCHEDULE_FIELDS.indexOf(a.position);
         const bIndex = SCHEDULE_FIELDS.indexOf(b.position);
@@ -330,11 +317,23 @@ function cleanPastedValue(value: string) {
   return cleaned;
 }
 
+function appendActivity(current: string | undefined, label: string, value: string) {
+  const cleanedValue = cleanPastedValue(value);
+
+  if (!cleanedValue) return current || '';
+
+  const nextLine = `${label}: ${cleanedValue}`;
+
+  if (!current) return nextLine;
+
+  return `${current}\n${nextLine}`;
+}
+
 function getAliasEntries() {
   const entries: {
     alias: string;
     target: string;
-    type: 'assignment' | 'activity';
+    type: 'assignment' | 'activity' | 'removed';
   }[] = [];
 
   Object.entries(FIELD_ALIASES).forEach(([target, aliases]) => {
@@ -354,6 +353,14 @@ function getAliasEntries() {
       alias,
       target: 'Activity of the Day',
       type: 'activity',
+    });
+  });
+
+  REMOVED_FIELD_ALIASES.forEach(alias => {
+    entries.push({
+      alias,
+      target: alias,
+      type: 'removed',
     });
   });
 
@@ -399,6 +406,12 @@ function parsePastedSchedule(rawText: string): ParsedPastedSchedule {
 
     if (aliasEntry.type === 'activity') {
       result.activity = value;
+      result.count++;
+      continue;
+    }
+
+    if (aliasEntry.type === 'removed') {
+      result.activity = appendActivity(result.activity, label, value);
       result.count++;
       continue;
     }
@@ -533,7 +546,11 @@ export default function ScheduleForm({
       ...date,
       activity: date.activity?.trim() || null,
       assignments: date.assignments
-        .filter(assignment => assignment.position.trim() && assignment.person_name.trim())
+        .filter(assignment =>
+          SCHEDULE_FIELDS.includes(assignment.position) &&
+          assignment.position.trim() &&
+          assignment.person_name.trim()
+        )
         .map((assignment, index) => ({
           ...assignment,
           position: assignment.position.trim(),
@@ -625,7 +642,9 @@ export default function ScheduleForm({
           const isOpen = openDateKey === dateKey;
           const pasteBoxOpen = openPasteDate === dateKey;
           const assignedCount = dateItem.assignments.filter(
-            assignment => assignment.person_name.trim()
+            assignment =>
+              SCHEDULE_FIELDS.includes(assignment.position) &&
+              assignment.person_name.trim()
           ).length;
           const closestKey = getClosestSundayDateKey(dates);
           const isClosestSunday = closestKey === dateKey;
@@ -705,16 +724,11 @@ Hymnal Song: If none, leave blank
 Prayer Request: If none, leave blank
 Testimony: Bro. Mark
 Tithes & Offering: Sis. Grace
-Scripture Reading: Youth
 Special Song: Music Team
-Kids: Children Ministry
-Teens: Teen Ministry
-Youth Bible Study: Ptr. Manny
-Adult Bible Study: Sis. Emma
 Praises & Worship: Music Team
 Message: Ptr. Manny
 Closing Prayer: Bro. Chris
-Activity of the Day: Prayer for birthday and anniversary celebrants`}
+Activity of the Day: Prayer for birthday and anniversary celebrants; Youth Bible Study after service`}
                       />
 
                       <div className="sticky bottom-24 sm:static bg-primary-light pt-2 flex gap-2 flex-col sm:flex-row">
@@ -781,7 +795,7 @@ Activity of the Day: Prayer for birthday and anniversary celebrants`}
                             placeholder={
                               optional
                                 ? 'If none, just leave blank'
-                                : `Enter the name of the one assigned for ${position}`
+                                : `Enter name for ${position}`
                             }
                           />
                         </div>
@@ -798,7 +812,7 @@ Activity of the Day: Prayer for birthday and anniversary celebrants`}
                         onChange={e => updateActivity(dateIndex, e.target.value)}
                         rows={3}
                         className="input-field text-base sm:text-sm resize-y bg-white"
-                        placeholder="Optional. Example: prayer for birthday/anniversary, special activity, reminders. If none, just leave blank."
+                        placeholder="Optional. Example: prayer for birthday/anniversary, youth/adult Bible study, kids/teens activity, reminders. If none, just leave blank."
                       />
                     </div>
                   </div>
