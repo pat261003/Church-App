@@ -63,27 +63,26 @@ export default function PrintSchedule() {
 
       <div className="grid grid-cols-1 gap-5">
         {schedule.dates.map(dateItem => (
-          <div key={dateItem.id || dateItem.service_date} className="border border-gray-300 rounded-lg overflow-hidden break-inside-avoid">
-            <div className="bg-gray-100 px-3 py-2 flex justify-between gap-3">
+          <div
+            key={dateItem.id || dateItem.service_date}
+            className="border border-gray-300 rounded-lg overflow-hidden break-inside-avoid"
+          >
+            <div className="bg-gray-100 px-3 py-2">
               <h2 className="font-bold">{formatDate(dateItem.service_date)}</h2>
-              <p className="text-sm">
-                Activity: <span className="font-semibold">{dateItem.activity || 'None'}</span>
-              </p>
             </div>
 
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr>
-                  <th className="border border-gray-300 px-2 py-1 text-left w-1/3">Position</th>
-                  <th className="border border-gray-300 px-2 py-1 text-left w-1/3">Assigned Person</th>
-                  <th className="border border-gray-300 px-2 py-1 text-left w-1/3">Notes</th>
+                  <th className="border border-gray-300 px-2 py-1 text-left w-1/2">Role</th>
+                  <th className="border border-gray-300 px-2 py-1 text-left w-1/2">Assigned Person</th>
                 </tr>
               </thead>
 
               <tbody>
                 {dateItem.assignments.length === 0 ? (
                   <tr>
-                    <td className="border border-gray-300 px-2 py-2 text-center" colSpan={3}>
+                    <td className="border border-gray-300 px-2 py-2 text-center" colSpan={2}>
                       No assignments
                     </td>
                   </tr>
@@ -91,13 +90,22 @@ export default function PrintSchedule() {
                   dateItem.assignments.map(assignment => (
                     <tr key={assignment.id}>
                       <td className="border border-gray-300 px-2 py-1">{assignment.position}</td>
-                      <td className="border border-gray-300 px-2 py-1 font-semibold">{assignment.person_name}</td>
-                      <td className="border border-gray-300 px-2 py-1">{assignment.notes || ''}</td>
+                      <td className="border border-gray-300 px-2 py-1 font-semibold">
+                        {assignment.person_name}
+                      </td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
+
+            {dateItem.activity && (
+              <div className="px-3 py-2 border-t border-gray-300">
+                <p className="text-sm">
+                  <span className="font-bold">Activity of the Day / Notes:</span> {dateItem.activity}
+                </p>
+              </div>
+            )}
           </div>
         ))}
       </div>

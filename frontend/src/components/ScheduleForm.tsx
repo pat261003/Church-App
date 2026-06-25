@@ -74,10 +74,6 @@ const FIELD_ALIASES: Record<string, string[]> = {
   'Prayer Request': [
     'prayer request',
     'prayer requests',
-    'prayer for birthday',
-    'prayer for anniversary',
-    'birthday prayer',
-    'anniversary prayer',
   ],
   'Testimony': [
     'testimony',
@@ -142,14 +138,20 @@ const ACTIVITY_ALIASES = [
   'activity',
   'activity of the day',
   'activity for the day',
+  'notes',
+  'note',
+  'remarks',
+  'schedule notes',
+  'sunday notes',
+  'prayer for birthday',
+  'prayer for anniversary',
+  'birthday prayer',
+  'anniversary prayer',
 ];
 
 type ParsedPastedSchedule = {
   activity?: string;
-  assignments: Record<string, {
-    personName?: string;
-    notes?: string;
-  }>;
+  assignments: Record<string, string>;
   count: number;
 };
 
@@ -192,6 +194,30 @@ function getSundaysInMonth(year: number, month: number) {
   return sundays;
 }
 
+function getClosestSundayDateKey(dates: ServiceScheduleDate[]) {
+  if (dates.length === 0) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const datedItems = dates.map(dateItem => ({
+    key: String(dateItem.service_date).slice(0, 10),
+    date: new Date(`${String(dateItem.service_date).slice(0, 10)}T00:00:00`),
+  }));
+
+  const upcoming = datedItems
+    .filter(item => item.date >= today)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  if (upcoming.length > 0) {
+    return upcoming[0].key;
+  }
+
+  const latestPast = datedItems.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+  return latestPast[0].key;
+}
+
 function isOptionalField(position: string) {
   return OPTIONAL_FIELDS.includes(position);
 }
@@ -206,14 +232,6 @@ function getAssignmentValue(dateItem: ServiceScheduleDate, position: string) {
   );
 
   return found?.person_name || '';
-}
-
-function getAssignmentNotes(dateItem: ServiceScheduleDate, position: string) {
-  const found = dateItem.assignments.find(
-    assignment => assignment.position.toLowerCase() === position.toLowerCase()
-  );
-
-  return found?.notes || '';
 }
 
 function updateFixedAssignment(
@@ -233,6 +251,7 @@ function updateFixedAssignment(
       position,
       person_name: personName,
       assignment_order: SCHEDULE_FIELDS.indexOf(position),
+      notes: null,
     };
 
     return {
@@ -245,43 +264,7 @@ function updateFixedAssignment(
     position,
     person_name: personName,
     assignment_order: SCHEDULE_FIELDS.indexOf(position),
-    notes: '',
-  };
-
-  return {
-    ...dateItem,
-    assignments: [...dateItem.assignments, newAssignment],
-  };
-}
-
-function updateFixedAssignmentNotes(
-  dateItem: ServiceScheduleDate,
-  position: string,
-  notes: string
-): ServiceScheduleDate {
-  const existingIndex = dateItem.assignments.findIndex(
-    assignment => assignment.position.toLowerCase() === position.toLowerCase()
-  );
-
-  if (existingIndex >= 0) {
-    const nextAssignments = [...dateItem.assignments];
-
-    nextAssignments[existingIndex] = {
-      ...nextAssignments[existingIndex],
-      notes,
-    };
-
-    return {
-      ...dateItem,
-      assignments: nextAssignments,
-    };
-  }
-
-  const newAssignment: ServiceScheduleAssignment = {
-    position,
-    person_name: '',
-    assignment_order: SCHEDULE_FIELDS.indexOf(position),
-    notes,
+    notes: null,
   };
 
   return {
@@ -294,6 +277,7 @@ function reorderDates(dates: ServiceScheduleDate[]) {
   return dates.map((date, dateIndex) => ({
     ...date,
     service_date: String(date.service_date).slice(0, 10),
+    activity: date.activity || '',
     date_order: dateIndex,
     assignments: [...date.assignments]
       .sort((a, b) => {
@@ -307,6 +291,7 @@ function reorderDates(dates: ServiceScheduleDate[]) {
       })
       .map((assignment, assignmentIndex) => ({
         ...assignment,
+        notes: null,
         assignment_order: assignmentIndex,
       })),
   }));
@@ -325,12 +310,31 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function cleanPastedValue(value: string) {
+  const cleaned = value.trim();
+
+  if (!cleaned) return '';
+
+  const lower = cleaned.toLowerCase();
+
+  if (
+    lower === 'none' ||
+    lower === 'n/a' ||
+    lower === 'na' ||
+    lower.includes('if none') ||
+    lower.includes('leave blank')
+  ) {
+    return '';
+  }
+
+  return cleaned;
+}
+
 function getAliasEntries() {
   const entries: {
     alias: string;
     target: string;
-    notesOnly: boolean;
-    isActivity: boolean;
+    type: 'assignment' | 'activity';
   }[] = [];
 
   Object.entries(FIELD_ALIASES).forEach(([target, aliases]) => {
@@ -340,22 +344,7 @@ function getAliasEntries() {
       entries.push({
         alias,
         target,
-        notesOnly: false,
-        isActivity: false,
-      });
-
-      entries.push({
-        alias: `${alias} notes`,
-        target,
-        notesOnly: true,
-        isActivity: false,
-      });
-
-      entries.push({
-        alias: `${alias} note`,
-        target,
-        notesOnly: true,
-        isActivity: false,
+        type: 'assignment',
       });
     });
   });
@@ -364,8 +353,7 @@ function getAliasEntries() {
     entries.push({
       alias,
       target: 'Activity of the Day',
-      notesOnly: false,
-      isActivity: true,
+      type: 'activity',
     });
   });
 
@@ -378,67 +366,6 @@ function findAliasEntry(label: string) {
   return getAliasEntries().find(
     entry => normalizeLabel(entry.alias) === normalized
   );
-}
-
-function splitPersonAndNotes(value: string) {
-  const cleaned = value.trim();
-
-  if (!cleaned) {
-    return {
-      personName: '',
-      notes: '',
-    };
-  }
-
-  if (cleaned.includes('|')) {
-    const [personName, ...noteParts] = cleaned.split('|');
-
-    return {
-      personName: personName.trim(),
-      notes: noteParts.join('|').trim(),
-    };
-  }
-
-  const parenthesisMatch = cleaned.match(/^(.*?)\s*\((.*?)\)\s*$/);
-
-  if (parenthesisMatch) {
-    return {
-      personName: parenthesisMatch[1].trim(),
-      notes: parenthesisMatch[2].trim(),
-    };
-  }
-
-  if (cleaned.includes(' - ')) {
-    const [personName, ...noteParts] = cleaned.split(' - ');
-
-    return {
-      personName: personName.trim(),
-      notes: noteParts.join(' - ').trim(),
-    };
-  }
-
-  if (cleaned.includes(' — ')) {
-    const [personName, ...noteParts] = cleaned.split(' — ');
-
-    return {
-      personName: personName.trim(),
-      notes: noteParts.join(' — ').trim(),
-    };
-  }
-
-  if (cleaned.includes(' – ')) {
-    const [personName, ...noteParts] = cleaned.split(' – ');
-
-    return {
-      personName: personName.trim(),
-      notes: noteParts.join(' – ').trim(),
-    };
-  }
-
-  return {
-    personName: cleaned,
-    notes: '',
-  };
 }
 
 function parsePastedSchedule(rawText: string): ParsedPastedSchedule {
@@ -465,35 +392,18 @@ function parsePastedSchedule(rawText: string): ParsedPastedSchedule {
 
   while ((match = regex.exec(rawText)) !== null) {
     const label = match[1].trim();
-    const value = match[2].trim();
+    const value = cleanPastedValue(match[2]);
     const aliasEntry = findAliasEntry(label);
 
     if (!aliasEntry) continue;
 
-    if (aliasEntry.isActivity) {
+    if (aliasEntry.type === 'activity') {
       result.activity = value;
       result.count++;
       continue;
     }
 
-    if (!result.assignments[aliasEntry.target]) {
-      result.assignments[aliasEntry.target] = {};
-    }
-
-    if (aliasEntry.notesOnly) {
-      result.assignments[aliasEntry.target].notes = value;
-      result.count++;
-      continue;
-    }
-
-    const { personName, notes } = splitPersonAndNotes(value);
-
-    result.assignments[aliasEntry.target].personName = personName;
-
-    if (notes) {
-      result.assignments[aliasEntry.target].notes = notes;
-    }
-
+    result.assignments[aliasEntry.target] = value;
     result.count++;
   }
 
@@ -516,13 +426,7 @@ function applyParsedScheduleToDate(
   }
 
   Object.entries(parsed.assignments).forEach(([position, value]) => {
-    if (value.personName !== undefined) {
-      nextDate = updateFixedAssignment(nextDate, position, value.personName);
-    }
-
-    if (value.notes !== undefined) {
-      nextDate = updateFixedAssignmentNotes(nextDate, position, value.notes);
-    }
+    nextDate = updateFixedAssignment(nextDate, position, value);
   });
 
   return nextDate;
@@ -541,6 +445,10 @@ export default function ScheduleForm({
 }) {
   const now = new Date();
 
+  const initialDates = initialData?.dates?.length
+    ? reorderDates(initialData.dates)
+    : getSundaysInMonth(now.getFullYear(), now.getMonth() + 1);
+
   const [title, setTitle] = useState(
     initialData?.title || `FGFT Sunday Service Schedule`
   );
@@ -556,10 +464,9 @@ export default function ScheduleForm({
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [submitting, setSubmitting] = useState(false);
 
-  const [dates, setDates] = useState<ServiceScheduleDate[]>(
-    initialData?.dates?.length
-      ? reorderDates(initialData.dates)
-      : getSundaysInMonth(now.getFullYear(), now.getMonth() + 1)
+  const [dates, setDates] = useState<ServiceScheduleDate[]>(initialDates);
+  const [openDateKey, setOpenDateKey] = useState<string | null>(
+    getClosestSundayDateKey(initialDates)
   );
 
   const [openPasteDate, setOpenPasteDate] = useState<string | null>(null);
@@ -568,7 +475,10 @@ export default function ScheduleForm({
   useEffect(() => {
     if (initialData?.dates?.length) return;
 
-    setDates(getSundaysInMonth(scheduleYear, scheduleMonth));
+    const newDates = getSundaysInMonth(scheduleYear, scheduleMonth);
+    setDates(newDates);
+    setOpenDateKey(getClosestSundayDateKey(newDates));
+    setOpenPasteDate(null);
   }, [scheduleMonth, scheduleYear, initialData?.dates?.length]);
 
   function updateActivity(dateIndex: number, value: string) {
@@ -583,14 +493,6 @@ export default function ScheduleForm({
     setDates(prev =>
       prev.map((date, index) =>
         index === dateIndex ? updateFixedAssignment(date, position, value) : date
-      )
-    );
-  }
-
-  function updateNotes(dateIndex: number, position: string, value: string) {
-    setDates(prev =>
-      prev.map((date, index) =>
-        index === dateIndex ? updateFixedAssignmentNotes(date, position, value) : date
       )
     );
   }
@@ -636,7 +538,7 @@ export default function ScheduleForm({
           ...assignment,
           position: assignment.position.trim(),
           person_name: assignment.person_name.trim(),
-          notes: assignment.notes?.trim() || null,
+          notes: null,
           assignment_order: index,
         })),
     }));
@@ -705,7 +607,7 @@ export default function ScheduleForm({
 
         <div>
           <label className="text-sm font-medium text-gray-600 mb-1 block">
-            Notes
+            Notes for Whole Schedule
           </label>
           <textarea
             value={notes}
@@ -717,14 +619,27 @@ export default function ScheduleForm({
         </div>
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {dates.map((dateItem, dateIndex) => {
-          const dateKey = dateItem.service_date;
+          const dateKey = String(dateItem.service_date).slice(0, 10);
+          const isOpen = openDateKey === dateKey;
           const pasteBoxOpen = openPasteDate === dateKey;
+          const assignedCount = dateItem.assignments.filter(
+            assignment => assignment.person_name.trim()
+          ).length;
+          const closestKey = getClosestSundayDateKey(dates);
+          const isClosestSunday = closestKey === dateKey;
 
           return (
-            <div key={dateItem.service_date} className="card flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div key={dateKey} className="card overflow-hidden">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenDateKey(isOpen ? null : dateKey);
+                  setOpenPasteDate(null);
+                }}
+                className="w-full text-left flex items-center justify-between gap-3"
+              >
                 <div>
                   <p className="text-xs font-bold text-primary uppercase tracking-wide">
                     Sunday Service
@@ -733,42 +648,61 @@ export default function ScheduleForm({
                   <h3 className="font-bold text-church-navy text-lg">
                     {formatDisplayDate(dateItem.service_date)}
                   </h3>
+
+                  <p className="text-xs text-gray-400">
+                    {assignedCount} assigned
+                    {dateItem.activity ? ' · Has activity/notes' : ''}
+                  </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setOpenPasteDate(pasteBoxOpen ? null : dateKey)}
-                    className="btn-secondary text-sm py-3 sm:py-2"
-                  >
-                    {pasteBoxOpen ? 'Hide Paste Box' : 'Paste / Auto-Fill'}
-                  </button>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  {isClosestSunday && (
+                    <span className="text-[10px] bg-primary text-white px-2 py-1 rounded-full">
+                      Closest
+                    </span>
+                  )}
+
+                  <span className="text-primary font-bold text-lg">
+                    {isOpen ? '▲' : '▼'}
+                  </span>
                 </div>
-              </div>
+              </button>
 
-              {pasteBoxOpen && (
-                <div className="rounded-xl border border-primary/20 bg-primary-light p-3 flex flex-col gap-3">
-                  <div>
-                    <h4 className="font-bold text-church-navy text-sm">
-                      Paste schedule text for this Sunday
-                    </h4>
-
-                    <p className="text-xs text-gray-500">
-                      Use format like “Master of Ceremony: Name”. Commas or new lines are okay.
-                    </p>
+              {isOpen && (
+                <div className="mt-4 pt-4 border-t border-church-border flex flex-col gap-4">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setOpenPasteDate(pasteBoxOpen ? null : dateKey)}
+                      className="btn-secondary text-sm py-3 sm:py-2"
+                    >
+                      {pasteBoxOpen ? 'Hide Paste Box' : 'Paste / Auto-Fill'}
+                    </button>
                   </div>
 
-                  <textarea
-                    value={pasteTextByDate[dateKey] || ''}
-                    onChange={e => updatePasteText(dateKey, e.target.value)}
-                    className="input-field min-h-52 font-mono text-base sm:text-sm resize-y bg-white leading-7"
-                    placeholder={`Example:
+                  {pasteBoxOpen && (
+                    <div className="rounded-xl border border-primary/20 bg-primary-light p-3 flex flex-col gap-3">
+                      <div>
+                        <h4 className="font-bold text-church-navy text-sm">
+                          Paste schedule text for this Sunday
+                        </h4>
+
+                        <p className="text-xs text-gray-500">
+                          Use format like “Master of Ceremony: Name”. Commas or new lines are okay.
+                        </p>
+                      </div>
+
+                      <textarea
+                        value={pasteTextByDate[dateKey] || ''}
+                        onChange={e => updatePasteText(dateKey, e.target.value)}
+                        className="input-field min-h-52 font-mono text-base sm:text-sm resize-y bg-white leading-7"
+                        placeholder={`Example:
 
 Master of Ceremony: Bro. Juan
 Opening Song: Sis. Maria
 Opening Prayer: Bro. Carlo
 Hymnal Song: If none, leave blank
-Prayer Request: Sis. Ana | Prayer for birthday and anniversary celebrants
+Prayer Request: If none, leave blank
 Testimony: Bro. Mark
 Tithes & Offering: Sis. Grace
 Scripture Reading: Youth
@@ -780,100 +714,96 @@ Adult Bible Study: Sis. Emma
 Praises & Worship: Music Team
 Message: Ptr. Manny
 Closing Prayer: Bro. Chris
-Activity of the Day: Youth Bible Study`}
-                  />
+Activity of the Day: Prayer for birthday and anniversary celebrants`}
+                      />
 
-                  <div className="sticky bottom-24 sm:static bg-primary-light pt-2 flex gap-2 flex-col sm:flex-row">
-                    <button
-                      type="button"
-                      onClick={() => handleAutoFillFromPaste(dateIndex)}
-                      className="btn-primary text-sm flex-1 py-3"
-                    >
-                      Auto-Fill Fields
-                    </button>
+                      <div className="sticky bottom-24 sm:static bg-primary-light pt-2 flex gap-2 flex-col sm:flex-row">
+                        <button
+                          type="button"
+                          onClick={() => handleAutoFillFromPaste(dateIndex)}
+                          className="btn-primary text-sm flex-1 py-3"
+                        >
+                          Auto-Fill Fields
+                        </button>
 
-                    <button
-                      type="button"
-                      onClick={() => updatePasteText(dateKey, '')}
-                      className="btn-secondary text-sm py-3"
-                    >
-                      Clear
-                    </button>
+                        <button
+                          type="button"
+                          onClick={() => updatePasteText(dateKey, '')}
+                          className="btn-secondary text-sm py-3"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 gap-3">
+                    {SCHEDULE_FIELDS.map(position => {
+                      const personValue = getAssignmentValue(dateItem, position);
+                      const optional = isOptionalField(position);
+                      const required = isRequiredField(position);
+
+                      return (
+                        <div
+                          key={position}
+                          className={`rounded-xl border p-3 ${
+                            required
+                              ? 'border-primary/30 bg-primary-light/60'
+                              : optional
+                                ? 'border-church-border bg-white'
+                                : 'border-church-border bg-church-lightblue/40'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <label className="text-sm font-bold text-church-navy">
+                              {position}
+                            </label>
+
+                            {optional ? (
+                              <span className="text-[10px] text-gray-500 bg-church-lightblue px-2 py-0.5 rounded-full">
+                                Optional
+                              </span>
+                            ) : required ? (
+                              <span className="text-[10px] text-primary bg-white px-2 py-0.5 rounded-full">
+                                Usual
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-gray-500 bg-white px-2 py-0.5 rounded-full">
+                                Schedule
+                              </span>
+                            )}
+                          </div>
+
+                          <input
+                            value={personValue}
+                            onChange={e => updatePerson(dateIndex, position, e.target.value)}
+                            className="input-field text-base sm:text-sm"
+                            placeholder={
+                              optional
+                                ? 'If none, just leave blank'
+                                : `Enter name for ${position}`
+                            }
+                          />
+                        </div>
+                      );
+                    })}
+
+                    <div className="rounded-xl border border-primary/30 bg-primary-light/70 p-3">
+                      <label className="text-sm font-bold text-church-navy mb-2 block">
+                        Activity of the Day / Notes
+                      </label>
+
+                      <textarea
+                        value={dateItem.activity || ''}
+                        onChange={e => updateActivity(dateIndex, e.target.value)}
+                        rows={3}
+                        className="input-field text-base sm:text-sm resize-y bg-white"
+                        placeholder="Optional. Example: prayer for birthday/anniversary, special activity, reminders. If none, just leave blank."
+                      />
+                    </div>
                   </div>
                 </div>
               )}
-
-              <div>
-                <label className="text-sm font-semibold text-primary mb-1 block">
-                  Activity of the Day
-                </label>
-                <input
-                  value={dateItem.activity || ''}
-                  onChange={e => updateActivity(dateIndex, e.target.value)}
-                  className="input-field text-base sm:text-sm"
-                  placeholder="Optional. If none, just leave blank."
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-3">
-                {SCHEDULE_FIELDS.map(position => {
-                  const personValue = getAssignmentValue(dateItem, position);
-                  const notesValue = getAssignmentNotes(dateItem, position);
-                  const optional = isOptionalField(position);
-                  const required = isRequiredField(position);
-
-                  return (
-                    <div
-                      key={position}
-                      className={`rounded-xl border p-3 ${
-                        required
-                          ? 'border-primary/30 bg-primary-light/60'
-                          : optional
-                            ? 'border-church-border bg-white'
-                            : 'border-church-border bg-church-lightblue/40'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <label className="text-sm font-bold text-church-navy">
-                          {position}
-                        </label>
-
-                        {optional ? (
-                          <span className="text-[10px] text-gray-500 bg-church-lightblue px-2 py-0.5 rounded-full">
-                            Optional
-                          </span>
-                        ) : required ? (
-                          <span className="text-[10px] text-primary bg-white px-2 py-0.5 rounded-full">
-                            Usual
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-gray-500 bg-white px-2 py-0.5 rounded-full">
-                            Schedule
-                          </span>
-                        )}
-                      </div>
-
-                      <input
-                        value={personValue}
-                        onChange={e => updatePerson(dateIndex, position, e.target.value)}
-                        className="input-field text-base sm:text-sm"
-                        placeholder={
-                          optional
-                            ? 'If none, just leave blank'
-                            : `Enter name for ${position}`
-                        }
-                      />
-
-                      <input
-                        value={notesValue}
-                        onChange={e => updateNotes(dateIndex, position, e.target.value)}
-                        className="input-field text-base sm:text-sm mt-2"
-                        placeholder="Optional note, e.g. prayer for birthday/anniversary. If none, just leave blank."
-                      />
-                    </div>
-                  );
-                })}
-              </div>
             </div>
           );
         })}
