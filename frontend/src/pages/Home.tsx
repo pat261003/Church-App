@@ -198,7 +198,7 @@ function UpcomingScheduleCard({
 }) {
   if (loading) {
     return (
-      <div className="card w-full max-w-4xl text-center">
+      <div className="text-center py-3">
         <p className="text-sm text-gray-500">Loading upcoming Sunday schedule...</p>
       </div>
     );
@@ -206,14 +206,7 @@ function UpcomingScheduleCard({
 
   if (!schedule || !dateItem) {
     return (
-      <Link
-        to="/schedules"
-        className="card w-full max-w-4xl block hover:shadow-md transition-shadow active:scale-[0.99] border-l-4 border-primary"
-      >
-        <p className="text-[11px] font-bold text-primary uppercase tracking-wide mb-1">
-          Upcoming Sunday Schedule
-        </p>
-
+      <div>
         <h2 className="text-lg font-bold text-church-navy">
           No schedule found for the upcoming Sunday
         </h2>
@@ -221,7 +214,14 @@ function UpcomingScheduleCard({
         <p className="text-sm text-gray-500 mt-1">
           Create or update the schedule in the Schedule tab.
         </p>
-      </Link>
+
+        <Link
+          to="/schedules"
+          className="btn-secondary text-sm mt-4 w-full sm:w-auto text-center block sm:inline-block"
+        >
+          Open Schedule
+        </Link>
+      </div>
     );
   }
 
@@ -230,10 +230,7 @@ function UpcomingScheduleCard({
   );
 
   return (
-    <Link
-      to={`/schedules/${schedule.id}`}
-      className="card w-full max-w-4xl block hover:shadow-lg transition-shadow active:scale-[0.99] border-l-4 border-primary"
-    >
+    <div>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
         <div>
           <p className="text-[11px] sm:text-xs font-bold text-primary uppercase tracking-wide mb-1">
@@ -294,27 +291,71 @@ function UpcomingScheduleCard({
         </div>
       )}
 
-      <div className="mt-4 pt-3 border-t border-church-border flex items-center justify-between gap-2">
-        <p className="text-[11px] sm:text-xs text-gray-400">
-          Tap to open full schedule
-        </p>
+      <Link
+        to={`/schedules/${schedule.id}`}
+        className="btn-secondary text-sm mt-4 w-full sm:w-auto text-center block sm:inline-block"
+      >
+        Open Full Schedule
+      </Link>
+    </div>
+  );
+}
 
-        <span className="text-xs font-bold text-primary">
-          View →
+function HomeAccordionSection({
+  title,
+  subtitle,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="w-full max-w-4xl card overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full text-left flex items-center justify-between gap-3"
+      >
+        <div className="min-w-0">
+          <h2 className="text-lg sm:text-xl font-bold text-church-navy">
+            {title}
+          </h2>
+
+          {subtitle && (
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              {subtitle}
+            </p>
+          )}
+        </div>
+
+        <span className="text-primary font-bold text-lg shrink-0">
+          {open ? '▲' : '▼'}
         </span>
-      </div>
-    </Link>
+      </button>
+
+      {open && (
+        <div className="mt-4 pt-4 border-t border-church-border">
+          {children}
+        </div>
+      )}
+    </div>
   );
 }
 
 export default function Home() {
   const [featuredLineup, setFeaturedLineup] = useState<ServiceLineup | null>(null);
   const [loadingLineup, setLoadingLineup] = useState(true);
-
   const [upcomingSchedule, setUpcomingSchedule] = useState<ServiceSchedule | null>(null);
   const [upcomingScheduleDate, setUpcomingScheduleDate] = useState<ServiceScheduleDate | null>(null);
   const [loadingSchedule, setLoadingSchedule] = useState(true);
-
+  const [showAttendanceHome, setShowAttendanceHome] = useState(false);
+  const [showScheduleHome, setShowScheduleHome] = useState(false);
+  const [showLineupHome, setShowLineupHome] = useState(false);  
   const [lastSundayStats, setLastSundayStats] = useState({
     total: 0,
     male: 0,
@@ -409,124 +450,157 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <AttendanceSummaryCard
-          title="Last Sunday Attendance"
-          date={lastSundayDate}
-          total={lastSundayStats.total}
-          male={lastSundayStats.male}
-          female={lastSundayStats.female}
+      <HomeAccordionSection
+        title="Attendance Summary"
+        subtitle="Tap to show previous and current Sunday attendance"
+        open={showAttendanceHome}
+        onToggle={() => setShowAttendanceHome(prev => !prev)}
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <AttendanceSummaryCard
+            title="Last Sunday Attendance"
+            date={lastSundayDate}
+            total={lastSundayStats.total}
+            male={lastSundayStats.male}
+            female={lastSundayStats.female}
+          />
+
+          <AttendanceSummaryCard
+            title="Current Sunday Attendance"
+            date={currentSundayDate}
+            total={currentSundayStats.total}
+            male={currentSundayStats.male}
+            female={currentSundayStats.female}
+          />
+        </div>
+
+        <Link
+          to="/attendance"
+          className="btn-secondary text-sm mt-4 w-full sm:w-auto text-center block sm:inline-block"
+        >
+          Open Attendance
+        </Link>
+      </HomeAccordionSection>
+
+      <HomeAccordionSection
+        title="Upcoming Sunday Schedule"
+        subtitle={
+          upcomingScheduleDate
+            ? formatDate(upcomingScheduleDate.service_date)
+            : 'Tap to show the upcoming Sunday schedule'
+        }
+        open={showScheduleHome}
+        onToggle={() => setShowScheduleHome(prev => !prev)}
+      >
+        <UpcomingScheduleCard
+          schedule={upcomingSchedule}
+          dateItem={upcomingScheduleDate}
+          loading={loadingSchedule}
         />
+      </HomeAccordionSection>
 
-        <AttendanceSummaryCard
-          title="Current Sunday Attendance"
-          date={currentSundayDate}
-          total={currentSundayStats.total}
-          male={currentSundayStats.male}
-          female={currentSundayStats.female}
-        />
-      </div>
-
-      <UpcomingScheduleCard
-        schedule={upcomingSchedule}
-        dateItem={upcomingScheduleDate}
-        loading={loadingSchedule}
-      />
-
-      <div className="w-full max-w-4xl">
-        {loadingLineup ? (
-          <div className="card text-center">
-            <p className="text-sm text-gray-500">Loading song lineup...</p>
-          </div>
-        ) : featuredLineup ? (
-          <Link
-            to={`/lineups/${featuredLineup.id}`}
-            className="card block hover:shadow-lg transition-shadow active:scale-[0.99] border-l-4 border-primary overflow-hidden"
-          >
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-              <div className="min-w-0">
-                <p className="text-[11px] sm:text-xs font-bold text-primary uppercase tracking-wide mb-1">
-                  Current / Upcoming Song Lineup
-                </p>
-
-                <h2 className="text-lg sm:text-xl font-bold text-church-navy leading-tight break-words">
-                  {featuredLineup.title}
-                </h2>
-
-                <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                  {formatDate(featuredLineup.service_date)}
-                </p>
-              </div>
-
-              <div className="w-full sm:w-auto bg-primary-light px-3 py-2 rounded-xl sm:text-right">
-                <p className="text-[11px] text-gray-500">Song Leader</p>
-                <p className="font-bold text-primary text-base break-words">
-                  {featuredLineup.song_leader}
-                </p>
-              </div>
+      <HomeAccordionSection
+          title="Current / Upcoming Song Lineup"
+          subtitle={
+            featuredLineup
+              ? `${featuredLineup.title} · ${formatDate(featuredLineup.service_date)}`
+              : 'Tap to show the current lineup'
+          }
+          open={showLineupHome}
+          onToggle={() => setShowLineupHome(prev => !prev)}
+        >
+          {loadingLineup ? (
+            <div className="text-center">
+              <p className="text-sm text-gray-500">Loading song lineup...</p>
             </div>
+          ) : featuredLineup ? (
+            <div>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                <div className="min-w-0">
+                  <p className="text-[11px] sm:text-xs font-bold text-primary uppercase tracking-wide mb-1">
+                    Current / Upcoming Song Lineup
+                  </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {featuredLineup.sections.map(section => (
-                <div
-                  key={section.id || section.section_name}
-                  className="rounded-xl bg-church-lightblue/80 p-3 min-w-0"
-                >
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <p className="text-xs font-bold text-primary uppercase tracking-wide truncate">
-                      {section.section_name}
-                    </p>
+                  <h2 className="text-lg sm:text-xl font-bold text-church-navy leading-tight break-words">
+                    {featuredLineup.title}
+                  </h2>
 
-                    <span className="text-[10px] text-gray-500 bg-white px-2 py-0.5 rounded-full shrink-0">
-                      {section.songs.length} {section.songs.length === 1 ? 'song' : 'songs'}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    {section.songs.map((song, index) => (
-                      <div
-                        key={song.id || `${section.section_name}-${index}`}
-                        className="bg-white rounded-lg px-2.5 py-2"
-                      >
-                        <p className="text-sm font-semibold text-church-navy leading-snug break-words">
-                          {index + 1}. {song.title || 'Untitled Song'}
-                        </p>
-
-                        <p className="text-[11px] text-gray-400 mt-0.5">
-                          Key: {song.key_override || song.current_key || song.original_key || '—'}
-                          {song.artist ? ` · ${song.artist}` : ''}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                    {formatDate(featuredLineup.service_date)}
+                  </p>
                 </div>
-              ))}
-            </div>
 
-            <div className="mt-4 pt-3 border-t border-church-border flex items-center justify-between gap-2">
-              <p className="text-[11px] sm:text-xs text-gray-400">
-                Tap to open full lineup
+                <div className="w-full sm:w-auto bg-primary-light px-3 py-2 rounded-xl sm:text-right">
+                  <p className="text-[11px] text-gray-500">Song Leader</p>
+                  <p className="font-bold text-primary text-base break-words">
+                    {featuredLineup.song_leader}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {featuredLineup.sections.map(section => (
+                  <div
+                    key={section.id || section.section_name}
+                    className="rounded-xl bg-church-lightblue/80 p-3 min-w-0"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <p className="text-xs font-bold text-primary uppercase tracking-wide truncate">
+                        {section.section_name}
+                      </p>
+
+                      <span className="text-[10px] text-gray-500 bg-white px-2 py-0.5 rounded-full shrink-0">
+                        {section.songs.length} {section.songs.length === 1 ? 'song' : 'songs'}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      {section.songs.map((song, index) => (
+                        <div
+                          key={song.id || `${section.section_name}-${index}`}
+                          className="bg-white rounded-lg px-2.5 py-2"
+                        >
+                          <p className="text-sm font-semibold text-church-navy leading-snug break-words">
+                            {index + 1}. {song.title || 'Untitled Song'}
+                          </p>
+
+                          <p className="text-[11px] text-gray-400 mt-0.5">
+                            Key: {song.key_override || song.current_key || song.original_key || '—'}
+                            {song.artist ? ` · ${song.artist}` : ''}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Link
+                to={`/lineups/${featuredLineup.id}`}
+                className="btn-secondary text-sm mt-4 w-full sm:w-auto text-center block sm:inline-block"
+              >
+                Open Full Lineup
+              </Link>
+            </div>
+          ) : (
+            <div>
+              <h2 className="text-lg font-bold text-church-navy mb-1">
+                No Song Lineup Yet
+              </h2>
+
+              <p className="text-sm text-gray-500">
+                Create a lineup so the song leader and songs appear here.
               </p>
 
-              <span className="text-xs font-bold text-primary">
-                View →
-              </span>
+              <Link
+                to="/lineups/add"
+                className="btn-secondary text-sm mt-4 w-full sm:w-auto text-center block sm:inline-block"
+              >
+                Create Lineup
+              </Link>
             </div>
-          </Link>
-        ) : (
-          <Link
-            to="/lineups/add"
-            className="card block text-center hover:shadow-md transition-shadow active:scale-[0.99] border-l-4 border-primary"
-          >
-            <h2 className="text-lg font-bold text-church-navy mb-1">
-              No Song Lineup Yet
-            </h2>
-            <p className="text-sm text-gray-500">
-              Create a lineup so the song leader and songs appear here.
-            </p>
-          </Link>
-        )}
-      </div>
+          )}
+        </HomeAccordionSection>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-4xl">
         <Link to="/attendance" className="card hover:shadow-md transition-shadow group active:scale-[0.99]">
