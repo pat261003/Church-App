@@ -122,18 +122,29 @@ function getTextColor(color: string) {
 }
 
 function getWheelFontSize(count: number) {
-  if (count <= 8) return '12';
-  if (count <= 14) return '10';
-  if (count <= 24) return '8';
-  if (count <= 40) return '6.5';
+  if (count <= 6) return '12';
+  if (count <= 10) return '10';
+  if (count <= 16) return '8.5';
+  if (count <= 24) return '7';
+  if (count <= 40) return '5.8';
   return '5';
 }
 
 function getWheelLabelRadius(count: number) {
-  if (count <= 8) return 88;
-  if (count <= 14) return 96;
-  if (count <= 24) return 104;
-  return 112;
+  if (count <= 6) return 86;
+  if (count <= 12) return 96;
+  if (count <= 24) return 106;
+  return 114;
+}
+
+function getWheelTextRotation(angle: number) {
+  let rotation = angle - 90;
+
+  if (angle > 180) {
+    rotation += 180;
+  }
+
+  return rotation;
 }
 
 function createWheel(index: number, overrides?: Partial<WheelData>): WheelData {
@@ -415,8 +426,8 @@ export default function Wheel() {
 
       <div className="flex flex-col gap-6">
         {wheels.map((wheel, wheelIndex) => {
-            const entries = parseEntries(wheel.entryText);
-            const sliceAngle = entries.length > 0 ? 360 / entries.length : 360;
+          const entries = parseEntries(wheel.entryText);
+          const sliceAngle = entries.length > 0 ? 360 / entries.length : 360;
 
           return (
             <section key={wheel.id} className="flex flex-col gap-4">
@@ -554,12 +565,22 @@ export default function Wheel() {
                     disabled={wheel.spinning || entries.length < 2}
                     aria-label="Spin the wheel"
                     title="Click to spin the wheel"
-                    className="relative w-[300px] h-[300px] sm:w-[360px] sm:h-[360px] flex items-center justify-center bg-transparent border-0 p-0 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
+                    className={`relative w-[300px] h-[300px] sm:w-[360px] sm:h-[360px] flex items-center justify-center bg-transparent border-0 p-0 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 transition-transform ${
+                      wheel.spinning ? 'wheel-zooming' : 'hover:scale-[1.03] active:scale-95'
+                    }`}
                   >
                     {/* Pointer */}
                     <div className="absolute -top-1 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
                       <div className="w-0 h-0 border-l-[16px] border-r-[16px] border-t-[30px] border-l-transparent border-r-transparent border-t-primary drop-shadow" />
                     </div>
+
+                    {wheel.spinning && (
+                      <div className="absolute top-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none rounded-full bg-white/95 border border-church-border px-3 py-1 shadow-md">
+                        <p className="text-[11px] font-bold text-primary whitespace-nowrap">
+                          Selecting...
+                        </p>
+                      </div>
+                    )}
 
                     <div
                       className="w-[280px] h-[280px] sm:w-[330px] sm:h-[330px] rounded-full transition-transform ease-out pointer-events-none"
@@ -614,6 +635,7 @@ export default function Wheel() {
                             const labelPosition = polarToCartesian(160, 160, labelRadius, middleAngle);
                             const color = WHEEL_COLORS[index % WHEEL_COLORS.length];
                             const fontSize = getWheelFontSize(entries.length);
+                            const textRotation = getWheelTextRotation(middleAngle);
 
                             return (
                               <g key={`${entry}-${index}`}>
@@ -625,16 +647,17 @@ export default function Wheel() {
                                 />
 
                                 <text
-                                    x={labelPosition.x}
-                                    y={labelPosition.y}
-                                    textAnchor="middle"
-                                    dominantBaseline="middle"
-                                    fill={getTextColor(color)}
-                                    fontSize={fontSize}
-                                    fontWeight="700"
-                                    transform={`rotate(${middleAngle}, ${labelPosition.x}, ${labelPosition.y})`}
-                                    >
-                                    {getShortLabel(entry)}
+                                  x={labelPosition.x}
+                                  y={labelPosition.y}
+                                  textAnchor="middle"
+                                  dominantBaseline="middle"
+                                  fill={getTextColor(color)}
+                                  fontSize={fontSize}
+                                  fontWeight="800"
+                                  letterSpacing="0.2"
+                                  transform={`rotate(${textRotation}, ${labelPosition.x}, ${labelPosition.y})`}
+                                >
+                                  {getShortLabel(entry)}
                                 </text>
                               </g>
                             );

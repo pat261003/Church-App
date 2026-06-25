@@ -178,6 +178,20 @@ html {
   }
 }
 
+.wheel-zooming {
+  animation: wheelZoomPulse 0.55s ease-in-out infinite alternate;
+}
+
+@keyframes wheelZoomPulse {
+  from {
+    transform: scale(1);
+  }
+
+  to {
+    transform: scale(1.055);
+  }
+}
+
 /* Print styles */
 @media print {
   .no-print {
