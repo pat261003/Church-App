@@ -28,7 +28,12 @@ const OPTIONAL_FIELDS = [
   'Prayer Request',
 ];
 
-const SCHEDULE_FIELDS = [
+const MONTH_END_FIELDS = [
+  'Communion Officiator',
+  'Assistants',
+];
+
+const BASE_SCHEDULE_FIELDS = [
   'Master of Ceremony',
   'Opening Song',
   'Opening Prayer',
@@ -100,6 +105,19 @@ const FIELD_ALIASES: Record<string, string[]> = {
   'Closing Prayer': [
     'closing prayer',
     'closing',
+  ],
+  'Communion Officiator': [
+    'communion officiator',
+    'communion',
+    'communion officer',
+    'communion pastor',
+    'holy communion',
+  ],
+  'Assistants': [
+    'assistants',
+    'assistant',
+    'communion assistants',
+    'communion assistant',
   ],
 };
 
@@ -180,6 +198,24 @@ function getSundaysInMonth(year: number, month: number) {
   return sundays;
 }
 
+function isLastSundayOfMonth(dateValue: string) {
+  const dateOnly = String(dateValue).slice(0, 10);
+  const date = new Date(`${dateOnly}T00:00:00`);
+  const nextWeek = new Date(date);
+
+  nextWeek.setDate(date.getDate() + 7);
+
+  return nextWeek.getMonth() !== date.getMonth();
+}
+
+function getScheduleFieldsForDate(dateValue: string) {
+  if (isLastSundayOfMonth(dateValue)) {
+    return [...BASE_SCHEDULE_FIELDS, ...MONTH_END_FIELDS];
+  }
+
+  return BASE_SCHEDULE_FIELDS;
+}
+
 function getClosestSundayDateKey(dates: ServiceScheduleDate[]) {
   if (dates.length === 0) return null;
 
@@ -212,6 +248,10 @@ function isRequiredField(position: string) {
   return REQUIRED_FIELDS.includes(position);
 }
 
+function isMonthEndField(position: string) {
+  return MONTH_END_FIELDS.includes(position);
+}
+
 function getAssignmentValue(dateItem: ServiceScheduleDate, position: string) {
   const found = dateItem.assignments.find(
     assignment => assignment.position.toLowerCase() === position.toLowerCase()
@@ -225,6 +265,7 @@ function updateFixedAssignment(
   position: string,
   personName: string
 ): ServiceScheduleDate {
+  const fieldsForDate = getScheduleFieldsForDate(dateItem.service_date);
   const existingIndex = dateItem.assignments.findIndex(
     assignment => assignment.position.toLowerCase() === position.toLowerCase()
   );
@@ -236,7 +277,7 @@ function updateFixedAssignment(
       ...nextAssignments[existingIndex],
       position,
       person_name: personName,
-      assignment_order: SCHEDULE_FIELDS.indexOf(position),
+      assignment_order: fieldsForDate.indexOf(position),
       notes: null,
     };
 
@@ -249,7 +290,7 @@ function updateFixedAssignment(
   const newAssignment: ServiceScheduleAssignment = {
     position,
     person_name: personName,
-    assignment_order: SCHEDULE_FIELDS.indexOf(position),
+    assignment_order: fieldsForDate.indexOf(position),
     notes: null,
   };
 
@@ -260,28 +301,32 @@ function updateFixedAssignment(
 }
 
 function reorderDates(dates: ServiceScheduleDate[]) {
-  return dates.map((date, dateIndex) => ({
-    ...date,
-    service_date: String(date.service_date).slice(0, 10),
-    activity: date.activity || '',
-    date_order: dateIndex,
-    assignments: [...date.assignments]
-      .filter(assignment => SCHEDULE_FIELDS.includes(assignment.position))
-      .sort((a, b) => {
-        const aIndex = SCHEDULE_FIELDS.indexOf(a.position);
-        const bIndex = SCHEDULE_FIELDS.indexOf(b.position);
+  return dates.map((date, dateIndex) => {
+    const fieldsForDate = getScheduleFieldsForDate(date.service_date);
 
-        const safeA = aIndex === -1 ? 999 : aIndex;
-        const safeB = bIndex === -1 ? 999 : bIndex;
+    return {
+      ...date,
+      service_date: String(date.service_date).slice(0, 10),
+      activity: date.activity || '',
+      date_order: dateIndex,
+      assignments: [...date.assignments]
+        .filter(assignment => fieldsForDate.includes(assignment.position))
+        .sort((a, b) => {
+          const aIndex = fieldsForDate.indexOf(a.position);
+          const bIndex = fieldsForDate.indexOf(b.position);
 
-        return safeA - safeB;
-      })
-      .map((assignment, assignmentIndex) => ({
-        ...assignment,
-        notes: null,
-        assignment_order: assignmentIndex,
-      })),
-  }));
+          const safeA = aIndex === -1 ? 999 : aIndex;
+          const safeB = bIndex === -1 ? 999 : bIndex;
+
+          return safeA - safeB;
+        })
+        .map((assignment, assignmentIndex) => ({
+          ...assignment,
+          notes: null,
+          assignment_order: assignmentIndex,
+        })),
+    };
+  });
 }
 
 function normalizeLabel(value: string) {
@@ -375,7 +420,8 @@ function findAliasEntry(label: string) {
   );
 }
 
-function parsePastedSchedule(rawText: string): ParsedPastedSchedule {
+function parsePastedSchedule(rawText: string, dateValue: string): ParsedPastedSchedule {
+  const fieldsForDate = getScheduleFieldsForDate(dateValue);
   const entries = getAliasEntries();
   const aliasPattern = entries
     .map(entry => entry.alias)
@@ -411,6 +457,12 @@ function parsePastedSchedule(rawText: string): ParsedPastedSchedule {
     }
 
     if (aliasEntry.type === 'removed') {
+      result.activity = appendActivity(result.activity, label, value);
+      result.count++;
+      continue;
+    }
+
+    if (!fieldsForDate.includes(aliasEntry.target)) {
       result.activity = appendActivity(result.activity, label, value);
       result.count++;
       continue;
@@ -520,7 +572,7 @@ export default function ScheduleForm({
   function handleAutoFillFromPaste(dateIndex: number) {
     const dateKey = dates[dateIndex].service_date;
     const pastedText = pasteTextByDate[dateKey] || '';
-    const parsed = parsePastedSchedule(pastedText);
+    const parsed = parsePastedSchedule(pastedText, dateKey);
 
     if (parsed.count === 0) {
       toast.error('No matching schedule fields found. Use format like "Opening Prayer: Name".');
@@ -542,23 +594,27 @@ export default function ScheduleForm({
 
     if (!title.trim()) return toast.error('Title is required');
 
-    const cleanDates = reorderDates(dates).map(date => ({
-      ...date,
-      activity: date.activity?.trim() || null,
-      assignments: date.assignments
-        .filter(assignment =>
-          SCHEDULE_FIELDS.includes(assignment.position) &&
-          assignment.position.trim() &&
-          assignment.person_name.trim()
-        )
-        .map((assignment, index) => ({
-          ...assignment,
-          position: assignment.position.trim(),
-          person_name: assignment.person_name.trim(),
-          notes: null,
-          assignment_order: index,
-        })),
-    }));
+    const cleanDates = reorderDates(dates).map(date => {
+      const fieldsForDate = getScheduleFieldsForDate(date.service_date);
+
+      return {
+        ...date,
+        activity: date.activity?.trim() || null,
+        assignments: date.assignments
+          .filter(assignment =>
+            fieldsForDate.includes(assignment.position) &&
+            assignment.position.trim() &&
+            assignment.person_name.trim()
+          )
+          .map((assignment, index) => ({
+            ...assignment,
+            position: assignment.position.trim(),
+            person_name: assignment.person_name.trim(),
+            notes: null,
+            assignment_order: index,
+          })),
+      };
+    });
 
     setSubmitting(true);
     try {
@@ -641,9 +697,11 @@ export default function ScheduleForm({
           const dateKey = String(dateItem.service_date).slice(0, 10);
           const isOpen = openDateKey === dateKey;
           const pasteBoxOpen = openPasteDate === dateKey;
+          const fieldsForDate = getScheduleFieldsForDate(dateKey);
+          const lastSunday = isLastSundayOfMonth(dateKey);
           const assignedCount = dateItem.assignments.filter(
             assignment =>
-              SCHEDULE_FIELDS.includes(assignment.position) &&
+              fieldsForDate.includes(assignment.position) &&
               assignment.person_name.trim()
           ).length;
           const closestKey = getClosestSundayDateKey(dates);
@@ -671,6 +729,7 @@ export default function ScheduleForm({
                   <p className="text-xs text-gray-400">
                     {assignedCount} assigned
                     {dateItem.activity ? ' · Has activity/notes' : ''}
+                    {lastSunday ? ' · Communion Sunday' : ''}
                   </p>
                 </div>
 
@@ -678,6 +737,12 @@ export default function ScheduleForm({
                   {isClosestSunday && (
                     <span className="text-[10px] bg-primary text-white px-2 py-1 rounded-full">
                       Closest
+                    </span>
+                  )}
+
+                  {lastSunday && (
+                    <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
+                      Communion
                     </span>
                   )}
 
@@ -728,7 +793,7 @@ Special Song: Music Team
 Praises & Worship: Music Team
 Message: Ptr. Manny
 Closing Prayer: Bro. Chris
-Activity of the Day: Prayer for birthday and anniversary celebrants; Youth Bible Study after service`}
+${lastSunday ? 'Communion Officiator: Ptr. Manny\nAssistants: Bro. Juan, Bro. Carlo\n' : ''}Activity of the Day: Prayer for birthday and anniversary celebrants`}
                       />
 
                       <div className="sticky bottom-24 sm:static bg-primary-light pt-2 flex gap-2 flex-col sm:flex-row">
@@ -752,20 +817,23 @@ Activity of the Day: Prayer for birthday and anniversary celebrants; Youth Bible
                   )}
 
                   <div className="grid grid-cols-1 gap-3">
-                    {SCHEDULE_FIELDS.map(position => {
+                    {fieldsForDate.map(position => {
                       const personValue = getAssignmentValue(dateItem, position);
                       const optional = isOptionalField(position);
                       const required = isRequiredField(position);
+                      const monthEnd = isMonthEndField(position);
 
                       return (
                         <div
                           key={position}
                           className={`rounded-xl border p-3 ${
-                            required
-                              ? 'border-primary/30 bg-primary-light/60'
-                              : optional
-                                ? 'border-church-border bg-white'
-                                : 'border-church-border bg-church-lightblue/40'
+                            monthEnd
+                              ? 'border-yellow-300 bg-yellow-50'
+                              : required
+                                ? 'border-primary/30 bg-primary-light/60'
+                                : optional
+                                  ? 'border-church-border bg-white'
+                                  : 'border-church-border bg-church-lightblue/40'
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2 mb-2">
@@ -773,7 +841,11 @@ Activity of the Day: Prayer for birthday and anniversary celebrants; Youth Bible
                               {position}
                             </label>
 
-                            {optional ? (
+                            {monthEnd ? (
+                              <span className="text-[10px] text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full">
+                                Last Sunday only
+                              </span>
+                            ) : optional ? (
                               <span className="text-[10px] text-gray-500 bg-church-lightblue px-2 py-0.5 rounded-full">
                                 Optional
                               </span>
@@ -793,9 +865,11 @@ Activity of the Day: Prayer for birthday and anniversary celebrants; Youth Bible
                             onChange={e => updatePerson(dateIndex, position, e.target.value)}
                             className="input-field text-base sm:text-sm"
                             placeholder={
-                              optional
-                                ? 'If none, just leave blank'
-                                : `Enter name for ${position}`
+                              monthEnd
+                                ? `Enter name for ${position}`
+                                : optional
+                                  ? 'If none, just leave blank'
+                                  : `Enter name for ${position}`
                             }
                           />
                         </div>
@@ -812,7 +886,7 @@ Activity of the Day: Prayer for birthday and anniversary celebrants; Youth Bible
                         onChange={e => updateActivity(dateIndex, e.target.value)}
                         rows={3}
                         className="input-field text-base sm:text-sm resize-y bg-white"
-                        placeholder="Optional. Example: prayer for birthday/anniversary, youth/adult Bible study, kids/teens activity, reminders. If none, just leave blank."
+                        placeholder="Optional. Example: prayer for birthday/anniversary, Bible study, reminders. If none, just leave blank."
                       />
                     </div>
                   </div>
