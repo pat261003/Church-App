@@ -631,7 +631,7 @@ export default function ScheduleForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5 pb-36 sm:pb-32 md:pb-10">
       <div className="card flex flex-col gap-3">
         <h2 className="font-semibold text-primary">Schedule Info</h2>
 
@@ -897,7 +897,7 @@ ${lastSunday ? 'Communion Officiator: Ptr. Manny\nAssistants: Bro. Juan, Bro. Ca
         })}
       </div>
 
-      <div className="flex gap-3 flex-col sm:flex-row">
+      <div className="sticky bottom-24 md:bottom-4 z-40 bg-white/95 backdrop-blur border border-church-border shadow-lg rounded-2xl p-3 flex gap-3 flex-col sm:flex-row">
         <button type="submit" disabled={submitting} className="btn-primary flex-1 py-3">
           {submitting ? 'Saving...' : submitLabel}
         </button>
