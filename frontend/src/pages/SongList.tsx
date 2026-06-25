@@ -88,29 +88,77 @@ export default function SongList() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {songs.map(s => (
             <div key={s.id} className="card hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start gap-2">
+              <div className="flex flex-col gap-3">
                 <div className="min-w-0">
-                  <Link to={`/songs/${s.id}`}
-                    className="font-bold text-church-navy hover:text-primary transition-colors truncate block">
+                  <Link
+                    to={`/songs/${s.id}`}
+                    className="font-bold text-church-navy hover:text-primary transition-colors truncate block text-base"
+                  >
                     {s.title}
                   </Link>
-                  {s.artist && <p className="text-sm text-gray-500">{s.artist}</p>}
-                  <div className="flex gap-2 mt-1 flex-wrap">
-                    <span className="text-xs bg-primary-light text-primary px-2 py-0.5 rounded font-semibold">
+
+                  {s.artist && (
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      {s.artist}
+                    </p>
+                  )}
+
+                  <div className="flex gap-2 mt-2 flex-wrap">
+                    <span className="text-xs bg-primary-light text-primary px-2 py-0.5 rounded-full font-semibold">
                       Key: {s.current_key || s.original_key}
                     </span>
+
                     {s.tags && s.tags.split(',').map(t => (
-                      <span key={t} className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">
+                      <span
+                        key={t}
+                        className="text-xs bg-[rgb(var(--color-surface))] border border-church-border text-gray-500 px-2 py-0.5 rounded-full"
+                      >
                         {t.trim()}
                       </span>
                     ))}
                   </div>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <Link to={`/songs/${s.id}/edit`}
-                    className="text-xs text-primary hover:underline">Edit</Link>
-                  <button onClick={() => setDeleteTarget(s)}
-                    className="text-xs text-red-500 hover:underline">Delete</button>
+
+                <div className="flex items-center justify-between gap-2 flex-wrap pt-2 border-t border-church-border">
+                  <Link
+                    to={`/songs/${s.id}`}
+                    className="text-xs font-bold text-primary hover:underline"
+                  >
+                    Open Lyrics
+                  </Link>
+
+                  <div className="flex gap-2 flex-wrap">
+                    <Link
+                      to={`/songs/${s.id}/edit`}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-church-border px-3 py-1.5 text-xs font-bold text-primary transition-all duration-200 hover:bg-primary hover:text-white hover:shadow-sm active:scale-95 bg-[rgb(var(--color-surface))]"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                        />
+                      </svg>
+                      Edit
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(s)}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 transition-all duration-200 hover:bg-red-500 hover:text-white hover:border-red-500 hover:shadow-sm active:scale-95 bg-[rgb(var(--color-surface))]"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0H7m3-3h4a1 1 0 011 1v2H9V5a1 1 0 011-1z"
+                        />
+                      </svg>
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
