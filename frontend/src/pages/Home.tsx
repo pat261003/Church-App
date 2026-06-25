@@ -266,18 +266,19 @@ function UpcomingScheduleCard({
           No assignments added yet for this Sunday.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="rounded-xl bg-church-lightblue p-3 flex flex-col gap-2">
           {visibleAssignments.map(assignment => (
             <div
               key={assignment.id || `${assignment.position}-${assignment.person_name}`}
-              className="rounded-xl bg-church-lightblue p-3"
+              className="bg-white rounded-lg px-3 py-2"
             >
-              <p className="text-[11px] font-bold text-primary uppercase tracking-wide">
-                {assignment.position}
-              </p>
-
-              <p className="font-bold text-church-navy text-sm break-words">
-                {assignment.person_name}
+              <p className="text-sm text-church-navy leading-snug break-words">
+                <span className="font-bold text-primary">
+                  {assignment.position}:
+                </span>{' '}
+                <span className="font-semibold">
+                  {assignment.person_name}
+                </span>
               </p>
             </div>
           ))}
