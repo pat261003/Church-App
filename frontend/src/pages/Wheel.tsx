@@ -357,19 +357,27 @@ export default function Wheel() {
             </p>
           </div>
 
-          <div className="relative w-[300px] h-[300px] sm:w-[360px] sm:h-[360px] flex items-center justify-center">
+          <button
+            type="button"
+            onClick={spinWheel}
+            disabled={spinning || entries.length < 2}
+            aria-label="Spin the wheel"
+            title="Click to spin the wheel"
+            className="relative w-[300px] h-[300px] sm:w-[360px] sm:h-[360px] flex items-center justify-center bg-transparent border-0 p-0 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
+            >
             {/* Pointer */}
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 z-20">
-              <div className="w-0 h-0 border-l-[16px] border-r-[16px] border-t-[30px] border-l-transparent border-r-transparent border-t-primary drop-shadow" />
+            <div className="absolute -top-1 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+                <div className="w-0 h-0 border-l-[16px] border-r-[16px] border-t-[30px] border-l-transparent border-r-transparent border-t-primary drop-shadow" />
             </div>
 
             <div
-              className="w-[280px] h-[280px] sm:w-[330px] sm:h-[330px] rounded-full transition-transform ease-out"
-              style={{
+                className="w-[280px] h-[280px] sm:w-[330px] sm:h-[330px] rounded-full transition-transform ease-out pointer-events-none"
+                style={{
                 transform: `rotate(${rotation}deg)`,
                 transitionDuration: spinning ? '5.2s' : '0ms',
-              }}
+                }}
             >
+            
               <svg viewBox="0 0 320 320" className="w-full h-full drop-shadow-lg">
                 <circle cx="160" cy="160" r="154" fill="rgb(var(--color-surface))" />
 
@@ -456,7 +464,8 @@ export default function Wheel() {
                 </text>
               </svg>
             </div>
-          </div>
+        </button>
+
 
           <button
             type="button"
