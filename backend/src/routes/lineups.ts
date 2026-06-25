@@ -31,6 +31,7 @@ async function getLineupById(id: string) {
         lss.song_id,
         lss.song_order,
         lss.key_override,
+        lss.song_link,
         lss.notes,
         s.title,
         s.original_key,
@@ -161,13 +162,14 @@ router.post(
 
           await query(
             `INSERT INTO service_lineup_songs
-               (section_id, song_id, song_order, key_override, notes)
-             VALUES ($1, $2, $3, $4, $5)`,
+               (section_id, song_id, song_order, key_override, song_link, notes)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
             [
               savedSection.id,
               song.song_id,
               songIndex,
               song.key_override?.trim() || null,
+              song.song_link?.trim() || null,
               song.notes?.trim() || null,
             ]
           );
@@ -264,13 +266,14 @@ router.put(
 
           await query(
             `INSERT INTO service_lineup_songs
-               (section_id, song_id, song_order, key_override, notes)
-             VALUES ($1, $2, $3, $4, $5)`,
+               (section_id, song_id, song_order, key_override, song_link, notes)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
             [
               savedSection.id,
               song.song_id,
               songIndex,
               song.key_override?.trim() || null,
+              song.song_link?.trim() || null,
               song.notes?.trim() || null,
             ]
           );

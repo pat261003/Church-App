@@ -13,8 +13,39 @@ const OPTIONAL_SECTIONS = [
   'Other',
 ];
 
+function formatLocalDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
 function getTodayDate() {
-  return new Date().toISOString().split('T')[0];
+  return formatLocalDate(new Date());
+}
+
+function getNextSundayDate() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const day = today.getDay();
+  const daysUntilSunday = day === 0 ? 0 : 7 - day;
+
+  const nextSunday = new Date(today);
+  nextSunday.setDate(today.getDate() + daysUntilSunday);
+
+  return formatLocalDate(nextSunday);
+}
+
+function getDateInputValue(dateValue: string | null | undefined) {
+  if (!dateValue) return getTodayDate();
+
+  return String(dateValue).slice(0, 10);
+}
+
+function titleHasSunday(title: string) {
+  return title.toLowerCase().includes('sunday');
 }
 
 function createSection(sectionName: string, order: number): LineupSection {
@@ -30,6 +61,7 @@ function createSongItem(songId = '', order = 0) {
     song_id: songId,
     song_order: order,
     key_override: '',
+    song_link: '',
     notes: '',
   };
 }
@@ -56,11 +88,21 @@ export default function LineupForm({
   onSubmit: (data: ServiceLineupInput) => Promise<void>;
   onCancel: () => void;
 }) {
+  const isEditing = Boolean(initialData?.service_date);
+
   const [songs, setSongs] = useState<Song[]>([]);
   const [loadingSongs, setLoadingSongs] = useState(true);
 
   const [title, setTitle] = useState(initialData?.title || 'Sunday Worship Service');
-  const [serviceDate, setServiceDate] = useState(initialData?.service_date || getTodayDate());
+  const [serviceDate, setServiceDate] = useState(
+    initialData?.service_date
+      ? getDateInputValue(initialData.service_date)
+      : titleHasSunday(initialData?.title || 'Sunday Worship Service')
+        ? getNextSundayDate()
+        : getTodayDate()
+  );
+  const [dateTouched, setDateTouched] = useState(false);
+
   const [songLeader, setSongLeader] = useState(initialData?.song_leader || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [sectionToAdd, setSectionToAdd] = useState('Offering Song');
@@ -78,6 +120,15 @@ export default function LineupForm({
       .catch(() => toast.error('Failed to load songs'))
       .finally(() => setLoadingSongs(false));
   }, []);
+
+  useEffect(() => {
+    if (isEditing) return;
+    if (dateTouched) return;
+
+    if (titleHasSunday(title)) {
+      setServiceDate(getNextSundayDate());
+    }
+  }, [title, isEditing, dateTouched]);
 
   function updateSectionName(sectionIndex: number, value: string) {
     setSections(prev =>
@@ -142,7 +193,7 @@ export default function LineupForm({
   function updateSongInSection(
     sectionIndex: number,
     songIndex: number,
-    key: 'song_id' | 'key_override' | 'notes',
+    key: 'song_id' | 'key_override' | 'song_link' | 'notes',
     value: string
   ) {
     setSections(prev =>
@@ -215,6 +266,7 @@ export default function LineupForm({
             ...song,
             song_order: index,
             key_override: song.key_override?.trim() || null,
+            song_link: song.song_link?.trim() || null,
             notes: song.notes?.trim() || null,
           })),
       }))
@@ -250,9 +302,12 @@ export default function LineupForm({
           <input
             value={title}
             onChange={e => setTitle(e.target.value)}
-            className="input-field"
+            className="input-field text-base sm:text-sm"
             placeholder="Sunday Worship Service"
           />
+          <p className="text-[11px] text-gray-400 mt-1">
+            If the title contains “Sunday”, the date will auto-select the nearest Sunday unless you manually change it.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -263,8 +318,11 @@ export default function LineupForm({
             <input
               type="date"
               value={serviceDate}
-              onChange={e => setServiceDate(e.target.value)}
-              className="input-field"
+              onChange={e => {
+                setDateTouched(true);
+                setServiceDate(e.target.value);
+              }}
+              className="input-field text-base sm:text-sm"
             />
           </div>
 
@@ -275,7 +333,7 @@ export default function LineupForm({
             <input
               value={songLeader}
               onChange={e => setSongLeader(e.target.value)}
-              className="input-field"
+              className="input-field text-base sm:text-sm"
               placeholder="e.g. Me"
             />
           </div>
@@ -289,7 +347,7 @@ export default function LineupForm({
             value={notes}
             onChange={e => setNotes(e.target.value)}
             rows={3}
-            className="input-field resize-y"
+            className="input-field resize-y text-base sm:text-sm"
             placeholder="Optional notes..."
           />
         </div>
@@ -300,15 +358,15 @@ export default function LineupForm({
           <div>
             <h2 className="font-semibold text-primary">Song Lineup</h2>
             <p className="text-xs text-gray-400">
-              Opening, Fast, and Slow are default. Offering and Closing are optional.
+              Add songs, leader keys, and optional song links.
             </p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
             <select
               value={sectionToAdd}
               onChange={e => setSectionToAdd(e.target.value)}
-              className="input-field text-sm w-auto"
+              className="input-field text-sm flex-1 sm:w-auto"
             >
               {[...DEFAULT_SECTIONS, ...OPTIONAL_SECTIONS].map(section => (
                 <option key={section} value={section}>{section}</option>
@@ -327,7 +385,7 @@ export default function LineupForm({
               <input
                 value={section.section_name}
                 onChange={e => updateSectionName(sectionIndex, e.target.value)}
-                className="input-field text-sm flex-1 min-w-40"
+                className="input-field text-base sm:text-sm flex-1 min-w-40"
                 placeholder="Opening Song, Fast Song, Slow Song..."
               />
 
@@ -365,12 +423,12 @@ export default function LineupForm({
                 section.songs.map((song, songIndex) => (
                   <div
                     key={songIndex}
-                    className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-center bg-church-lightblue rounded-lg p-2"
+                    className="bg-church-lightblue rounded-lg p-3 grid grid-cols-1 gap-2"
                   >
                     <select
                       value={song.song_id}
                       onChange={e => updateSongInSection(sectionIndex, songIndex, 'song_id', e.target.value)}
-                      className="input-field text-sm"
+                      className="input-field text-base sm:text-sm"
                     >
                       <option value="">Select song...</option>
                       {songs.map(s => (
@@ -380,11 +438,28 @@ export default function LineupForm({
                       ))}
                     </select>
 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input
+                        value={song.key_override || ''}
+                        onChange={e => updateSongInSection(sectionIndex, songIndex, 'key_override', e.target.value)}
+                        className="input-field text-base sm:text-sm"
+                        placeholder="Leader key, e.g. E"
+                      />
+
+                      <input
+                        value={song.song_link || ''}
+                        onChange={e => updateSongInSection(sectionIndex, songIndex, 'song_link', e.target.value)}
+                        className="input-field text-base sm:text-sm"
+                        placeholder="Song link, e.g. YouTube or Google Drive"
+                        type="url"
+                      />
+                    </div>
+
                     <input
-                      value={song.key_override || ''}
-                      onChange={e => updateSongInSection(sectionIndex, songIndex, 'key_override', e.target.value)}
-                      className="input-field text-sm sm:w-20"
-                      placeholder="Key"
+                      value={song.notes || ''}
+                      onChange={e => updateSongInSection(sectionIndex, songIndex, 'notes', e.target.value)}
+                      className="input-field text-base sm:text-sm"
+                      placeholder="Optional notes"
                     />
 
                     <div className="flex gap-1">
@@ -392,27 +467,28 @@ export default function LineupForm({
                         type="button"
                         onClick={() => moveSong(sectionIndex, songIndex, -1)}
                         disabled={songIndex === 0}
-                        className="btn-secondary text-xs disabled:opacity-40"
+                        className="btn-secondary text-xs disabled:opacity-40 flex-1 sm:flex-none"
                       >
-                        ↑
+                        ↑ Move Up
                       </button>
+
                       <button
                         type="button"
                         onClick={() => moveSong(sectionIndex, songIndex, 1)}
                         disabled={songIndex === section.songs.length - 1}
-                        className="btn-secondary text-xs disabled:opacity-40"
+                        className="btn-secondary text-xs disabled:opacity-40 flex-1 sm:flex-none"
                       >
-                        ↓
+                        ↓ Move Down
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => removeSongFromSection(sectionIndex, songIndex)}
+                        className="text-red-400 hover:text-red-600 text-sm px-2"
+                      >
+                        Remove
                       </button>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() => removeSongFromSection(sectionIndex, songIndex)}
-                      className="text-red-400 hover:text-red-600 text-sm"
-                    >
-                      Remove
-                    </button>
                   </div>
                 ))
               )}
@@ -422,7 +498,7 @@ export default function LineupForm({
               type="button"
               onClick={() => addSongToSection(sectionIndex)}
               disabled={loadingSongs}
-              className="btn-secondary text-sm w-full mt-3"
+              className="btn-secondary text-sm w-full mt-3 py-3"
             >
               + Add Song
             </button>
@@ -430,12 +506,12 @@ export default function LineupForm({
         ))}
       </div>
 
-      <div className="flex gap-3">
-        <button type="submit" disabled={submitting} className="btn-primary flex-1">
+      <div className="flex gap-3 flex-col sm:flex-row">
+        <button type="submit" disabled={submitting} className="btn-primary flex-1 py-3">
           {submitting ? 'Saving...' : submitLabel}
         </button>
 
-        <button type="button" onClick={onCancel} className="btn-secondary">
+        <button type="button" onClick={onCancel} className="btn-secondary py-3">
           Cancel
         </button>
       </div>

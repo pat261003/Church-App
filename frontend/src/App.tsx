@@ -17,6 +17,11 @@ import AddLineup from './pages/AddLineup';
 import EditLineup from './pages/EditLineup';
 import LineupDetail from './pages/LineupDetail';
 import PrintLineup from './pages/PrintLineup';
+import ScheduleList from './pages/ScheduleList';
+import AddSchedule from './pages/AddSchedule';
+import EditSchedule from './pages/EditSchedule';
+import ScheduleDetail from './pages/ScheduleDetail';
+import PrintSchedule from './pages/PrintSchedule';
 
 export default function App() {
   useEffect(() => {
@@ -43,6 +48,11 @@ export default function App() {
             <Route path="/lineups/:id" element={<LineupDetail />} />
             <Route path="/lineups/:id/edit" element={<EditLineup />} />
             <Route path="/print/lineup/:id" element={<PrintLineup />} />
+            <Route path="/schedules" element={<ScheduleList />} />
+            <Route path="/schedules/add" element={<AddSchedule />} />
+            <Route path="/schedules/:id" element={<ScheduleDetail />} />
+            <Route path="/schedules/:id/edit" element={<EditSchedule />} />
+            <Route path="/print/schedule/:id" element={<PrintSchedule />} />
           </Routes>
         </main>
         <Toaster

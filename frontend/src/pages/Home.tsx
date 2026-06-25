@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchLineup, fetchLineups } from '../api/lineups';
-import { ServiceLineup } from '../types';
+import { fetchAttendance } from '../api/attendance';
+import { AttendanceRecord, ServiceLineup } from '../types';
+
+function formatLocalDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
 
 function getDateOnly(dateValue: string | null | undefined) {
   if (!dateValue) return '';
@@ -36,6 +45,42 @@ function formatDate(dateValue: string | null | undefined) {
   });
 }
 
+function getCurrentSundayDate() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const day = today.getDay();
+  const daysUntilSunday = day === 0 ? 0 : 7 - day;
+
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() + daysUntilSunday);
+
+  return formatLocalDate(sunday);
+}
+
+function getLastSundayDate() {
+  const currentSunday = new Date(`${getCurrentSundayDate()}T00:00:00`);
+  currentSunday.setDate(currentSunday.getDate() - 7);
+
+  return formatLocalDate(currentSunday);
+}
+
+function countGender(records: AttendanceRecord[]) {
+  const male = records.filter(
+    r => (r.ministry_group || '').toLowerCase() === 'male'
+  ).length;
+
+  const female = records.filter(
+    r => (r.ministry_group || '').toLowerCase() === 'female'
+  ).length;
+
+  return {
+    total: records.length,
+    male,
+    female,
+  };
+}
+
 function chooseFeaturedLineup(lineups: ServiceLineup[]) {
   if (lineups.length === 0) return null;
 
@@ -67,9 +112,67 @@ function chooseFeaturedLineup(lineups: ServiceLineup[]) {
   return latestPast[0].lineup;
 }
 
+function AttendanceSummaryCard({
+  title,
+  date,
+  total,
+  male,
+  female,
+}: {
+  title: string;
+  date: string;
+  total: number;
+  male: number;
+  female: number;
+}) {
+  return (
+    <div className="rounded-xl bg-white border border-church-border p-3 shadow-sm">
+      <p className="text-xs font-bold text-primary uppercase tracking-wide">
+        {title}
+      </p>
+
+      <p className="text-[11px] text-gray-400 mb-3">
+        {formatDate(date)}
+      </p>
+
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-primary-light rounded-lg p-2 text-center">
+          <p className="text-[10px] text-gray-500">Total</p>
+          <p className="text-lg font-bold text-primary">{total}</p>
+        </div>
+
+        <div className="bg-primary-light rounded-lg p-2 text-center">
+          <p className="text-[10px] text-gray-500">Male</p>
+          <p className="text-lg font-bold text-primary">{male}</p>
+        </div>
+
+        <div className="bg-primary-light rounded-lg p-2 text-center">
+          <p className="text-[10px] text-gray-500">Female</p>
+          <p className="text-lg font-bold text-primary">{female}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [featuredLineup, setFeaturedLineup] = useState<ServiceLineup | null>(null);
   const [loadingLineup, setLoadingLineup] = useState(true);
+
+  const [lastSundayStats, setLastSundayStats] = useState({
+    total: 0,
+    male: 0,
+    female: 0,
+  });
+
+  const [currentSundayStats, setCurrentSundayStats] = useState({
+    total: 0,
+    male: 0,
+    female: 0,
+  });
+
+  const lastSundayDate = getLastSundayDate();
+  const currentSundayDate = getCurrentSundayDate();
 
   useEffect(() => {
     async function loadFeaturedLineup() {
@@ -92,12 +195,26 @@ export default function Home() {
       }
     }
 
+    async function loadAttendanceSummaries() {
+      try {
+        const [lastSundayRecords, currentSundayRecords] = await Promise.all([
+          fetchAttendance(lastSundayDate),
+          fetchAttendance(currentSundayDate),
+        ]);
+
+        setLastSundayStats(countGender(lastSundayRecords));
+        setCurrentSundayStats(countGender(currentSundayRecords));
+      } catch (err) {
+        console.error('Failed to load attendance summaries:', err);
+      }
+    }
+
     loadFeaturedLineup();
-  }, []);
+    loadAttendanceSummaries();
+  }, [lastSundayDate, currentSundayDate]);
 
   return (
     <div className="flex flex-col items-center gap-6 sm:gap-8 py-4 sm:py-6">
-      {/* Hero */}
       <div className="text-center max-w-lg px-2">
         <img
           src="/logo.jpg"
@@ -114,103 +231,119 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Featured Song Lineup */}
-<div className="w-full max-w-4xl">
-  {loadingLineup ? (
-    <div className="card text-center">
-      <p className="text-sm text-gray-500">Loading song lineup...</p>
-    </div>
-  ) : featuredLineup ? (
-    <Link
-      to={`/lineups/${featuredLineup.id}`}
-      className="card block hover:shadow-lg transition-shadow active:scale-[0.99] border-l-4 border-primary overflow-hidden"
-    >
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-        <div className="min-w-0">
-          <p className="text-[11px] sm:text-xs font-bold text-primary uppercase tracking-wide mb-1">
-            Current / Upcoming Song Lineup
-          </p>
+      <div className="w-full max-w-4xl grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <AttendanceSummaryCard
+          title="Last Sunday Attendance"
+          date={lastSundayDate}
+          total={lastSundayStats.total}
+          male={lastSundayStats.male}
+          female={lastSundayStats.female}
+        />
 
-          <h2 className="text-lg sm:text-xl font-bold text-church-navy leading-tight break-words">
-            {featuredLineup.title}
-          </h2>
-
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            {formatDate(featuredLineup.service_date)}
-          </p>
-        </div>
-
-        <div className="w-full sm:w-auto bg-primary-light px-3 py-2 rounded-xl sm:text-right">
-          <p className="text-[11px] text-gray-500">Song Leader</p>
-          <p className="font-bold text-primary text-base break-words">
-            {featuredLineup.song_leader}
-          </p>
-        </div>
+        <AttendanceSummaryCard
+          title="Current Sunday Attendance"
+          date={currentSundayDate}
+          total={currentSundayStats.total}
+          male={currentSundayStats.male}
+          female={currentSundayStats.female}
+        />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {featuredLineup.sections.map(section => (
-          <div
-            key={section.id || section.section_name}
-            className="rounded-xl bg-church-lightblue/80 p-3 min-w-0"
+      <div className="w-full max-w-4xl">
+        {loadingLineup ? (
+          <div className="card text-center">
+            <p className="text-sm text-gray-500">Loading song lineup...</p>
+          </div>
+        ) : featuredLineup ? (
+          <Link
+            to={`/lineups/${featuredLineup.id}`}
+            className="card block hover:shadow-lg transition-shadow active:scale-[0.99] border-l-4 border-primary overflow-hidden"
           >
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <p className="text-xs font-bold text-primary uppercase tracking-wide truncate">
-                {section.section_name}
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+              <div className="min-w-0">
+                <p className="text-[11px] sm:text-xs font-bold text-primary uppercase tracking-wide mb-1">
+                  Current / Upcoming Song Lineup
+                </p>
 
-              <span className="text-[10px] text-gray-500 bg-white px-2 py-0.5 rounded-full shrink-0">
-                {section.songs.length} {section.songs.length === 1 ? 'song' : 'songs'}
-              </span>
+                <h2 className="text-lg sm:text-xl font-bold text-church-navy leading-tight break-words">
+                  {featuredLineup.title}
+                </h2>
+
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                  {formatDate(featuredLineup.service_date)}
+                </p>
+              </div>
+
+              <div className="w-full sm:w-auto bg-primary-light px-3 py-2 rounded-xl sm:text-right">
+                <p className="text-[11px] text-gray-500">Song Leader</p>
+                <p className="font-bold text-primary text-base break-words">
+                  {featuredLineup.song_leader}
+                </p>
+              </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              {section.songs.map((song, index) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {featuredLineup.sections.map(section => (
                 <div
-                  key={song.id || `${section.section_name}-${index}`}
-                  className="bg-white rounded-lg px-2.5 py-2"
+                  key={section.id || section.section_name}
+                  className="rounded-xl bg-church-lightblue/80 p-3 min-w-0"
                 >
-                  <p className="text-sm font-semibold text-church-navy leading-snug break-words">
-                    {index + 1}. {song.title || 'Untitled Song'}
-                  </p>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <p className="text-xs font-bold text-primary uppercase tracking-wide truncate">
+                      {section.section_name}
+                    </p>
 
-                  <p className="text-[11px] text-gray-400 mt-0.5">
-                    Key: {song.key_override || song.current_key || song.original_key || '—'}
-                    {song.artist ? ` · ${song.artist}` : ''}
-                  </p>
+                    <span className="text-[10px] text-gray-500 bg-white px-2 py-0.5 rounded-full shrink-0">
+                      {section.songs.length} {section.songs.length === 1 ? 'song' : 'songs'}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    {section.songs.map((song, index) => (
+                      <div
+                        key={song.id || `${section.section_name}-${index}`}
+                        className="bg-white rounded-lg px-2.5 py-2"
+                      >
+                        <p className="text-sm font-semibold text-church-navy leading-snug break-words">
+                          {index + 1}. {song.title || 'Untitled Song'}
+                        </p>
+
+                        <p className="text-[11px] text-gray-400 mt-0.5">
+                          Key: {song.key_override || song.current_key || song.original_key || '—'}
+                          {song.artist ? ` · ${song.artist}` : ''}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
-        ))}
+
+            <div className="mt-4 pt-3 border-t border-church-border flex items-center justify-between gap-2">
+              <p className="text-[11px] sm:text-xs text-gray-400">
+                Tap to open full lineup
+              </p>
+
+              <span className="text-xs font-bold text-primary">
+                View →
+              </span>
+            </div>
+          </Link>
+        ) : (
+          <Link
+            to="/lineups/add"
+            className="card block text-center hover:shadow-md transition-shadow active:scale-[0.99] border-l-4 border-primary"
+          >
+            <h2 className="text-lg font-bold text-church-navy mb-1">
+              No Song Lineup Yet
+            </h2>
+            <p className="text-sm text-gray-500">
+              Create a lineup so the song leader and songs appear here.
+            </p>
+          </Link>
+        )}
       </div>
 
-      <div className="mt-4 pt-3 border-t border-church-border flex items-center justify-between gap-2">
-        <p className="text-[11px] sm:text-xs text-gray-400">
-          Tap to open full lineup
-        </p>
-
-        <span className="text-xs font-bold text-primary">
-          View →
-        </span>
-      </div>
-    </Link>
-  ) : (
-    <Link
-      to="/lineups/add"
-      className="card block text-center hover:shadow-md transition-shadow active:scale-[0.99] border-l-4 border-primary"
-    >
-      <h2 className="text-lg font-bold text-church-navy mb-1">
-        No Song Lineup Yet
-      </h2>
-      <p className="text-sm text-gray-500">
-        Create a lineup so the song leader and songs appear here.
-      </p>
-    </Link>
-  )}
-</div>
-
-      {/* Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-4xl">
         <Link to="/attendance" className="card hover:shadow-md transition-shadow group active:scale-[0.99]">
           <div className="flex items-center gap-4">
@@ -344,6 +477,28 @@ export default function Home() {
           </div>
         </Link>
       </div>
+
+      <Link to="/schedules" className="card hover:shadow-md transition-shadow group active:scale-[0.99]">
+        <div className="flex items-center gap-4">
+          <div className="bg-primary-light p-3 rounded-xl shrink-0">
+            <svg className="w-7 h-7 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7V3m8 4V3M4 11h16M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2zm3 10h.01M12 15h.01M16 15h.01"
+              />
+            </svg>
+          </div>
+
+          <div>
+            <h2 className="font-bold text-church-navy text-lg group-hover:text-primary transition-colors">
+              Schedule
+            </h2>
+            <p className="text-gray-500 text-sm">View service assignments</p>
+          </div>
+        </div>
+      </Link>
 
       <p className="text-xs text-gray-400 mt-2 text-center px-4">
         Full Gospel Faith Temple Inc. · Since 1967 · Philippines

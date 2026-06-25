@@ -49,6 +49,7 @@ export interface LineupSongItem {
   song_id: string;
   song_order: number;
   key_override?: string | null;
+  song_link?: string | null;
   notes?: string | null;
 
   title?: string;
@@ -84,4 +85,52 @@ export interface ServiceLineupInput {
   song_leader: string;
   notes?: string;
   sections: LineupSection[];
+}
+
+export interface ServiceScheduleAssignment {
+  id?: string;
+  date_id?: string;
+  position: string;
+  person_name: string;
+  assignment_order: number;
+  notes?: string | null;
+}
+
+export interface ServiceScheduleDate {
+  id?: string;
+  schedule_id?: string;
+  service_date: string;
+  activity?: string | null;
+  date_order: number;
+  assignments: ServiceScheduleAssignment[];
+}
+
+export interface ServiceSchedule {
+  id: string;
+  title: string;
+  schedule_month: number;
+  schedule_year: number;
+  notes?: string | null;
+  dates: ServiceScheduleDate[];
+  created_at: string;
+  updated_at: string;
+  service_count?: string;
+  assignment_count?: string;
+}
+
+export interface ServiceScheduleInput {
+  title: string;
+  schedule_month: number;
+  schedule_year: number;
+  notes?: string;
+  dates: ServiceScheduleDate[];
+}
+
+export interface ScheduleAssignmentMatch {
+  title: string;
+  service_date: string;
+  activity?: string | null;
+  position: string;
+  person_name: string;
+  notes?: string | null;
 }

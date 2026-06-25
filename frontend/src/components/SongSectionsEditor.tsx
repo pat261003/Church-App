@@ -233,7 +233,7 @@ function SortableSection({
           type="button"
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing px-2 py-2 rounded-lg bg-church-lightblue text-primary font-bold"
+          className="cursor-grab active:cursor-grabbing px-3 py-3 rounded-lg bg-church-lightblue text-primary font-bold shrink-0"
           title="Hold and drag to reorder"
         >
           ☰
@@ -243,14 +243,14 @@ function SortableSection({
           list="section-suggestions"
           value={section.section_type}
           onChange={e => updateSectionType(index, e.target.value)}
-          className="input-field flex-1 text-sm"
+          className="input-field flex-1 text-base sm:text-sm"
           placeholder="Verse 1, Chorus, Bridge..."
         />
 
         <button
           type="button"
           onClick={() => removeSection(index)}
-          className="text-red-400 hover:text-red-600 text-sm font-semibold px-2"
+          className="text-red-400 hover:text-red-600 text-sm font-semibold px-2 shrink-0"
         >
           Remove
         </button>
@@ -259,7 +259,7 @@ function SortableSection({
       <textarea
         value={section.content}
         onChange={e => updateSectionContent(index, e.target.value)}
-        className="input-field min-h-40 font-mono text-sm resize-y"
+        className="input-field min-h-52 sm:min-h-40 font-mono text-base sm:text-sm resize-y leading-7"
         placeholder={`Example:
 
 G        C
@@ -384,7 +384,7 @@ export default function SongSectionsEditor({
         <button
           type="button"
           onClick={() => setShowPasteBox(prev => !prev)}
-          className="btn-secondary text-sm"
+          className="btn-primary sm:btn-secondary text-sm w-full sm:w-auto"
         >
           {showPasteBox ? 'Hide Paste Box' : 'Paste Full Song'}
         </button>
@@ -397,14 +397,14 @@ export default function SongSectionsEditor({
               Paste the whole song here
             </h3>
             <p className="text-xs text-gray-500">
-              Best format: use headings like Verse 1, Chorus, Bridge, Intro, Outro, Tag.
+              Use headings like Verse 1, Chorus, Bridge, Intro, Outro, Tag.
             </p>
           </div>
 
           <textarea
             value={fullSongText}
             onChange={e => setFullSongText(e.target.value)}
-            className="input-field min-h-64 font-mono text-sm resize-y bg-white"
+            className="input-field min-h-[55vh] sm:min-h-64 font-mono text-base sm:text-sm resize-y bg-white leading-7"
             placeholder={`Example:
 
 Verse 1
@@ -426,11 +426,11 @@ G        D
 Worthy of all praise`}
           />
 
-          <div className="flex gap-2 flex-wrap">
+          <div className="sticky bottom-24 sm:static bg-primary-light pt-2 flex gap-2 flex-col sm:flex-row">
             <button
               type="button"
               onClick={handleAutoSplitSong}
-              className="btn-primary text-sm flex-1"
+              className="btn-primary text-sm flex-1 py-3"
             >
               Auto Split to Sections
             </button>
@@ -438,7 +438,7 @@ Worthy of all praise`}
             <button
               type="button"
               onClick={() => setFullSongText('')}
-              className="btn-secondary text-sm"
+              className="btn-secondary text-sm py-3"
             >
               Clear
             </button>
@@ -466,16 +466,16 @@ Worthy of all praise`}
         </SortableContext>
       </DndContext>
 
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-col sm:flex-row">
         <input
           list="section-suggestions"
           value={newSectionName}
           onChange={e => setNewSectionName(e.target.value)}
-          className="input-field flex-1 min-w-40"
+          className="input-field flex-1 min-w-40 text-base sm:text-sm"
           placeholder="Verse 1, Chorus, Bridge..."
         />
 
-        <button type="button" onClick={addSection} className="btn-secondary">
+        <button type="button" onClick={addSection} className="btn-secondary py-3">
           + Add Section
         </button>
       </div>

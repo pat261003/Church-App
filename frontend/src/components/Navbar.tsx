@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
-type IconName = 'home' | 'attendance' | 'dashboard' | 'songs' | 'lineup';
+type IconName = 'home' | 'attendance' | 'dashboard' | 'songs' | 'lineup' | 'schedule';
 
 const links: {
   to: string;
@@ -15,6 +15,7 @@ const links: {
   { to: '/dashboard', label: 'Dashboard', shortLabel: 'Stats', icon: 'dashboard', quick: false },
   { to: '/songs', label: 'Songs', shortLabel: 'Songs', icon: 'songs', quick: true },
   { to: '/lineups', label: 'Lineup', shortLabel: 'Lineup', icon: 'lineup', quick: true },
+  { to: '/schedules', label: 'Schedule', shortLabel: 'Sched', icon: 'schedule', quick: true },
 ];
 
 function NavIcon({ name, active }: { name: IconName; active: boolean }) {
@@ -71,6 +72,19 @@ function NavIcon({ name, active }: { name: IconName; active: boolean }) {
       </svg>
     );
   }
+
+  if (name === 'schedule') {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M8 7V3m8 4V3M4 11h16M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2zm3 10h.01M12 15h.01M16 15h.01"
+      />
+    </svg>
+  );
+}
 
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,7 +204,7 @@ export default function Navbar() {
       {/* Improved mobile bottom quick navigation */}
       <div className="no-print md:hidden fixed bottom-3 left-3 right-3 z-50">
         <div className="bg-white/95 backdrop-blur border border-church-border rounded-2xl shadow-lg px-2 py-2">
-          <div className="grid grid-cols-4 gap-1">
+          <div className="grid grid-cols-5 gap-1">
             {quickLinks.map(l => {
               const active = isActive(l.to);
 

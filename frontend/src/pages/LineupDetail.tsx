@@ -6,6 +6,26 @@ import { ServiceLineup } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { formatDatePH } from '../utils/csv';
 
+function getSongLink(songId: string, key?: string | null) {
+  if (!key) return `/songs/${songId}`;
+
+  return `/songs/${songId}?key=${encodeURIComponent(key)}`;
+}
+
+function normalizeExternalLink(link?: string | null) {
+  if (!link) return '';
+
+  const trimmed = link.trim();
+
+  if (!trimmed) return '';
+
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+
+  return `https://${trimmed}`;
+}
+
 export default function LineupDetail() {
   const { id } = useParams<{ id: string }>();
   const [lineup, setLineup] = useState<ServiceLineup | null>(null);
@@ -58,34 +78,55 @@ export default function LineupDetail() {
               </span>
 
               <div className="flex flex-col gap-2">
-                {section.songs.map((song, index) => (
-                  <div
-                    key={song.id}
-                    className="bg-church-lightblue rounded-lg p-3 flex items-center justify-between gap-3 flex-wrap"
-                  >
-                    <div>
-                      <Link
-                        to={`/songs/${song.song_id}`}
-                        className="font-bold text-primary hover:underline"
-                      >
-                        {index + 1}. {song.title}
-                      </Link>
+                {section.songs.map((song, index) => {
+                  const leaderKey = song.key_override || song.current_key || song.original_key || '';
+                  const attachedLink = normalizeExternalLink(song.song_link);
 
-                      <p className="text-xs text-gray-500">
-                        Key: {song.key_override || song.current_key || song.original_key || '—'}
-                        {song.artist ? ` · ${song.artist}` : ''}
-                      </p>
+                  return (
+                    <div
+                      key={song.id}
+                      className="bg-church-lightblue rounded-lg p-3 flex flex-col gap-3"
+                    >
+                      <div>
+                        <Link
+                          to={getSongLink(song.song_id, leaderKey)}
+                          className="font-bold text-primary hover:underline text-base"
+                        >
+                          {index + 1}. {song.title}
+                        </Link>
 
-                      {song.notes && (
-                        <p className="text-xs text-gray-400 mt-1">{song.notes}</p>
-                      )}
+                        <p className="text-xs text-gray-500">
+                          Leader Key: {leaderKey || '—'}
+                          {song.artist ? ` · ${song.artist}` : ''}
+                        </p>
+
+                        {song.notes && (
+                          <p className="text-xs text-gray-400 mt-1">{song.notes}</p>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2 flex-col sm:flex-row">
+                        <Link
+                          to={getSongLink(song.song_id, leaderKey)}
+                          className="btn-secondary text-xs text-center"
+                        >
+                          Open Lyrics
+                        </Link>
+
+                        {attachedLink && (
+                          <a
+                            href={attachedLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-primary text-xs text-center"
+                          >
+                            Open Attached Link
+                          </a>
+                        )}
+                      </div>
                     </div>
-
-                    <Link to={`/songs/${song.song_id}`} className="btn-secondary text-xs">
-                      Open Lyrics
-                    </Link>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))

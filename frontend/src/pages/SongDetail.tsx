@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetchSong } from '../api/songs';
 import { Song, SongSection } from '../types';
@@ -142,6 +142,8 @@ function LyricsSection({ section, currentKey, originalKey }: {
 
 export default function SongDetail() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const lineupKey = searchParams.get('key');
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentKey, setCurrentKey] = useState('');
@@ -151,11 +153,11 @@ export default function SongDetail() {
     fetchSong(id)
       .then(data => {
         setSong(data);
-        setCurrentKey(data.current_key || data.original_key);
+        setCurrentKey(lineupKey || data.current_key || data.original_key);
       })
       .catch(() => toast.error('Failed to load song'))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, lineupKey]);
 
   if (loading) return <LoadingSpinner label="Loading song..." />;
   if (!song) return <p className="text-center text-gray-400 py-12">Song not found.</p>;

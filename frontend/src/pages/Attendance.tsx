@@ -5,6 +5,7 @@ import { AttendanceRecord } from '../types';
 import ConfirmModal from '../components/ConfirmModal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { formatTimePH, getTodayDate } from '../utils/csv';
+import { checkScheduleAssignments } from '../api/schedules';
 
 export default function Attendance() {
   const today = getTodayDate();
@@ -70,6 +71,22 @@ export default function Attendance() {
       setNotes('');
 
       toast.success(`${record.full_name} registered at ${formatTimePH(record.entered_at)}`);
+    try {
+      const assignments = await checkScheduleAssignments(record.full_name, date);
+
+      if (assignments.length > 0) {
+        const assignmentText = assignments
+          .map(a => `${a.position}${a.activity ? ` — ${a.activity}` : ''}`)
+          .join(', ');
+
+        toast.success(
+          `Reminder: ${record.full_name} is assigned today for ${assignmentText}`,
+          { duration: 10000 }
+        );
+      }
+    } catch (err) {
+      console.error('Failed to check schedule assignment:', err);
+    }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       toast.error(msg || 'Failed to register attendance');
