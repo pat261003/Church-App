@@ -191,6 +191,19 @@ html {
     transform: scale(1.055);
   }
 }
+.wheel-winner-preview {
+  animation: wheelWinnerPreview 0.45s ease-in-out infinite alternate;
+}
+
+@keyframes wheelWinnerPreview {
+  from {
+    transform: scale(1);
+  }
+
+  to {
+    transform: scale(1.08);
+  }
+}
 
 /* Print styles */
 @media print {

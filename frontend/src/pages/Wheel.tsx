@@ -19,6 +19,7 @@ type WheelData = {
   spinning: boolean;
   rotation: number;
   winner: string;
+  previewWinner: string;
   results: WheelResult[];
 };
 
@@ -158,6 +159,7 @@ function createWheel(index: number, overrides?: Partial<WheelData>): WheelData {
     spinning: false,
     rotation: 0,
     winner: '',
+    previewWinner: '',
     results: [],
     ...overrides,
   };
@@ -179,6 +181,7 @@ function getInitialWheels(): WheelData[] {
           sourceLabel: wheel.sourceLabel || 'Manual',
           removeWinner: Boolean(wheel.removeWinner),
           spinning: false,
+          previewWinner: '',
           results: Array.isArray(wheel.results) ? wheel.results : [],
         }));
       }
@@ -210,11 +213,13 @@ function getInitialWheels(): WheelData[] {
 export default function Wheel() {
   const [wheels, setWheels] = useState<WheelData[]>(() => getInitialWheels());
   const timeoutRefs = useRef<Record<string, number>>({});
+  const previewTimeoutRefs = useRef<Record<string, number>>({});
 
   useEffect(() => {
     const safeWheels = wheels.map(wheel => ({
       ...wheel,
       spinning: false,
+      previewWinner: '',
     }));
 
     localStorage.setItem('wheel-list', JSON.stringify(safeWheels));
@@ -223,6 +228,10 @@ export default function Wheel() {
   useEffect(() => {
     return () => {
       Object.values(timeoutRefs.current).forEach(timeoutId => {
+        window.clearTimeout(timeoutId);
+      });
+
+      Object.values(previewTimeoutRefs.current).forEach(timeoutId => {
         window.clearTimeout(timeoutId);
       });
     };
@@ -266,6 +275,11 @@ export default function Wheel() {
     if (timeoutRefs.current[wheelId]) {
       window.clearTimeout(timeoutRefs.current[wheelId]);
       delete timeoutRefs.current[wheelId];
+    }
+
+    if (previewTimeoutRefs.current[wheelId]) {
+      window.clearTimeout(previewTimeoutRefs.current[wheelId]);
+      delete previewTimeoutRefs.current[wheelId];
     }
 
     setWheels(prev => prev.filter(wheel => wheel.id !== wheelId));
@@ -332,12 +346,25 @@ export default function Wheel() {
     updateWheel(wheelId, {
       spinning: true,
       winner: '',
+      previewWinner: '',
       rotation: nextRotation,
     });
 
     if (timeoutRefs.current[wheelId]) {
       window.clearTimeout(timeoutRefs.current[wheelId]);
     }
+
+    if (previewTimeoutRefs.current[wheelId]) {
+      window.clearTimeout(previewTimeoutRefs.current[wheelId]);
+    }
+
+    previewTimeoutRefs.current[wheelId] = window.setTimeout(() => {
+      updateWheel(wheelId, {
+        previewWinner: chosenValue,
+      });
+
+      delete previewTimeoutRefs.current[wheelId];
+    }, 3700);
 
     timeoutRefs.current[wheelId] = window.setTimeout(() => {
       const result: WheelResult = {
@@ -354,6 +381,7 @@ export default function Wheel() {
           return {
             ...currentWheel,
             winner: chosenValue,
+            previewWinner: '',
             results: [result, ...currentWheel.results],
             spinning: false,
             entryText: currentWheel.removeWinner
@@ -378,6 +406,7 @@ export default function Wheel() {
     updateWheel(wheelId, {
       entryText: '',
       winner: '',
+      previewWinner: '',
       sourceLabel: 'Manual',
     });
   }
@@ -392,6 +421,7 @@ export default function Wheel() {
     updateWheel(wheelId, {
       results: [],
       winner: '',
+      previewWinner: '',
     });
   }
 
@@ -575,10 +605,16 @@ export default function Wheel() {
                     </div>
 
                     {wheel.spinning && (
-                      <div className="absolute top-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none rounded-full bg-white/95 border border-church-border px-3 py-1 shadow-md">
-                        <p className="text-[11px] font-bold text-primary whitespace-nowrap">
-                          Selecting...
-                        </p>
+                      <div className="absolute top-5 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+                        <div className="wheel-winner-preview rounded-2xl bg-white/95 border-2 border-primary px-4 py-2 shadow-xl text-center min-w-[170px]">
+                          <p className="text-[10px] font-bold text-primary uppercase tracking-wide whitespace-nowrap">
+                            {wheel.previewWinner ? 'Almost there...' : 'Selecting...'}
+                          </p>
+
+                          <p className="text-sm font-extrabold text-church-navy break-words leading-tight mt-0.5">
+                            {wheel.previewWinner || 'Slowing down'}
+                          </p>
+                        </div>
                       </div>
                     )}
 
@@ -636,14 +672,16 @@ export default function Wheel() {
                             const color = WHEEL_COLORS[index % WHEEL_COLORS.length];
                             const fontSize = getWheelFontSize(entries.length);
                             const textRotation = getWheelTextRotation(middleAngle);
+                            const isPreviewWinner = wheel.previewWinner === entry;
 
                             return (
                               <g key={`${entry}-${index}`}>
                                 <path
                                   d={describeSlice(startAngle, endAngle)}
                                   fill={color}
-                                  stroke="white"
-                                  strokeWidth="2"
+                                  stroke={isPreviewWinner ? '#FFFFFF' : 'white'}
+                                  strokeWidth={isPreviewWinner ? '6' : '2'}
+                                  opacity={wheel.previewWinner && !isPreviewWinner ? 0.72 : 1}
                                 />
 
                                 <text
