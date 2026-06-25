@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { fetchAttendance } from '../api/attendance';
 
@@ -400,8 +400,8 @@ export default function Wheel() {
 
       <div className="flex flex-col gap-6">
         {wheels.map((wheel, wheelIndex) => {
-          const entries = useMemo(() => parseEntries(wheel.entryText), [wheel.entryText]);
-          const sliceAngle = entries.length > 0 ? 360 / entries.length : 360;
+            const entries = parseEntries(wheel.entryText);
+            const sliceAngle = entries.length > 0 ? 360 / entries.length : 360;
 
           return (
             <section key={wheel.id} className="flex flex-col gap-4">
