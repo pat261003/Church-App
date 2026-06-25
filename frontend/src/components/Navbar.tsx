@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import PaletteToggle from './PaletteToggle';
 
 type IconName = 'home' | 'attendance' | 'dashboard' | 'songs' | 'lineup' | 'schedule';
 
@@ -74,17 +75,17 @@ function NavIcon({ name, active }: { name: IconName; active: boolean }) {
   }
 
   if (name === 'schedule') {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M8 7V3m8 4V3M4 11h16M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2zm3 10h.01M12 15h.01M16 15h.01"
-      />
-    </svg>
-  );
-}
+    return (
+      <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M8 7V3m8 4V3M4 11h16M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2zm3 10h.01M12 15h.01M16 15h.01"
+        />
+      </svg>
+    );
+  }
 
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,7 +127,7 @@ export default function Navbar() {
             />
 
             <div className="min-w-0">
-              <span className="text-white font-bold text-sm sm:text-base leading-tight block truncate max-w-[190px] sm:max-w-none">
+              <span className="text-white font-bold text-sm sm:text-base leading-tight block truncate max-w-[150px] sm:max-w-none">
                 FGFT Church App
               </span>
               <span className="text-white/80 text-[11px] hidden sm:block">
@@ -135,47 +136,55 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-1">
-            {links.map(l => (
-              <Link
-                key={l.to}
-                to={l.to}
-                className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                  isActive(l.to)
-                    ? 'bg-white text-primary shadow-sm'
-                    : 'text-white hover:bg-primary-dark'
-                }`}
-              >
-                {l.label}
-              </Link>
-            ))}
+          {/* Desktop nav + palette toggle */}
+          <div className="hidden md:flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              {links.map(l => (
+                <Link
+                  key={l.to}
+                  to={l.to}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    isActive(l.to)
+                      ? 'bg-[rgb(var(--color-surface))] text-primary shadow-sm'
+                      : 'text-white hover:bg-primary-dark'
+                  }`}
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+
+            <PaletteToggle />
           </div>
 
-          {/* Hamburger */}
-          <button
-            className="md:hidden text-white p-2 rounded-lg hover:bg-primary-dark transition-colors"
-            onClick={() => setOpen(!open)}
-            aria-label="Toggle menu"
-          >
-            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {open ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              ) : (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              )}
-            </svg>
-          </button>
+          {/* Mobile palette toggle + hamburger */}
+          <div className="md:hidden flex items-center gap-2">
+            <PaletteToggle />
+
+            <button
+              className="text-white p-2 rounded-lg hover:bg-primary-dark transition-colors"
+              onClick={() => setOpen(!open)}
+              aria-label="Toggle menu"
+            >
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {open ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Mobile dropdown menu */}
@@ -189,7 +198,7 @@ export default function Navbar() {
                   onClick={() => setOpen(false)}
                   className={`px-3 py-3 rounded-xl text-sm font-semibold text-center transition-colors ${
                     isActive(l.to)
-                      ? 'bg-white text-primary shadow-sm'
+                      ? 'bg-[rgb(var(--color-surface))] text-primary shadow-sm'
                       : 'bg-primary text-white hover:bg-white/10'
                   }`}
                 >
@@ -203,7 +212,10 @@ export default function Navbar() {
 
       {/* Improved mobile bottom quick navigation */}
       <div className="no-print md:hidden fixed bottom-3 left-3 right-3 z-50">
-        <div className="bg-white/95 backdrop-blur border border-church-border rounded-2xl shadow-lg px-2 py-2">
+        <div
+          className="backdrop-blur border border-church-border rounded-2xl shadow-lg px-2 py-2"
+          style={{ backgroundColor: 'rgb(var(--color-surface) / 0.95)' }}
+        >
           <div className="grid grid-cols-5 gap-1">
             {quickLinks.map(l => {
               const active = isActive(l.to);

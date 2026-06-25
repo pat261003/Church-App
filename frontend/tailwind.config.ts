@@ -6,15 +6,15 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#5B7FA6',
-          dark: '#3d5c7d',
-          light: '#EAF0F7',
+          DEFAULT: 'rgb(var(--color-primary) / <alpha-value>)',
+          dark: 'rgb(var(--color-primary-dark) / <alpha-value>)',
+          light: 'rgb(var(--color-primary-light) / <alpha-value>)',
         },
         church: {
-          navy: '#1A1A1A',
-          blue: '#5B7FA6',
-          lightblue: '#EAF0F7',
-          border: '#D1D9E0',
+          navy: 'rgb(var(--color-church-navy) / <alpha-value>)',
+          blue: 'rgb(var(--color-church-blue) / <alpha-value>)',
+          lightblue: 'rgb(var(--color-church-lightblue) / <alpha-value>)',
+          border: 'rgb(var(--color-church-border) / <alpha-value>)',
         },
       },
       fontFamily: {

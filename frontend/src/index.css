@@ -3,6 +3,41 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  /* Original theme */
+  --color-primary: 91 127 166;
+  --color-primary-dark: 61 92 125;
+  --color-primary-light: 234 240 247;
+
+  --color-church-navy: 26 26 26;
+  --color-church-blue: 91 127 166;
+  --color-church-lightblue: 234 240 247;
+  --color-church-border: 209 217 224;
+
+  --color-card: 255 255 255;
+  --color-surface: 255 255 255;
+}
+
+html[data-theme='rose'] {
+  /* New uploaded palette */
+  --color-primary: 11 25 87;              /* #0B1957 */
+  --color-primary-dark: 7 17 62;
+  --color-primary-light: 255 219 209;     /* #FFDBD1 */
+
+  --color-church-navy: 11 25 87;          /* #0B1957 */
+  --color-church-blue: 250 158 188;       /* #FA9EBC */
+  --color-church-lightblue: 248 243 234;  /* #F8F3EA */
+  --color-church-border: 250 158 188;     /* #FA9EBC */
+
+  --color-card: 255 219 209;              /* #FFDBD1 */
+  --color-surface: 248 243 234;           /* #F8F3EA */
+}
+
+html {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
 @layer base {
   body {
     @apply bg-church-lightblue text-church-navy font-sans;
@@ -14,34 +49,40 @@
     @apply bg-primary hover:bg-primary-dark text-white font-semibold px-4 py-2 rounded-lg
            transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
   }
+
   .btn-secondary {
-    @apply bg-white hover:bg-gray-50 text-primary border border-church-border
-           font-semibold px-4 py-2 rounded-lg transition-colors duration-200;
+    @apply text-primary border border-church-border font-semibold px-4 py-2 rounded-lg
+           transition-colors duration-200;
+    background-color: rgb(var(--color-surface));
   }
+
+  .btn-secondary:hover {
+    background-color: rgb(var(--color-primary-light));
+  }
+
   .btn-danger {
     @apply bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2
            rounded-lg transition-colors duration-200;
   }
+
   .input-field {
     @apply w-full border border-church-border rounded-lg px-3 py-2
            focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
-           bg-white text-church-navy placeholder-gray-400;
+           text-church-navy placeholder-gray-400;
+    background-color: rgb(var(--color-surface));
   }
+
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-church-border p-4 md:p-6;
+    @apply rounded-xl shadow-sm border border-church-border p-4 md:p-6;
+    background-color: rgb(var(--color-card));
   }
+
   .section-label {
     @apply inline-block bg-primary text-white text-xs font-bold px-2 py-1 rounded uppercase tracking-wider;
   }
 }
 
-/* Print styles */
-@media print {
-  .no-print { display: none !important; }
-  .print-only { display: block !important; }
-  body { background: white; font-size: 12pt; }
-  .card { box-shadow: none; border: 1px solid #ccc; }
-}
+/* Song lyrics and chords */
 .song-lyrics {
   max-width: 100%;
   overflow-x: hidden;
@@ -80,14 +121,14 @@
 }
 
 .chord-name {
-  color: #5B7FA6;
+  color: rgb(var(--color-primary));
   font-weight: 700;
   line-height: 1.1;
   min-height: 1rem;
 }
 
 .lyric-text {
-  color: #1A1A1A;
+  color: rgb(var(--color-church-navy));
   line-height: 1.7;
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -95,7 +136,7 @@
 }
 
 .lyric-only-line {
-  color: #1A1A1A;
+  color: rgb(var(--color-church-navy));
   line-height: 1.7;
   white-space: pre-wrap;
   overflow-wrap: break-word;
@@ -124,17 +165,25 @@
   }
 }
 
+/* Print styles */
 @media print {
   .no-print {
     display: none !important;
   }
 
+  .print-only {
+    display: block !important;
+  }
+
   body {
     background: white !important;
+    font-size: 12pt;
   }
 
   .card {
+    background: white !important;
     box-shadow: none !important;
+    border: 1px solid #ccc !important;
   }
 
   @page {

@@ -6,6 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Full Gospel Faith Temple Inc. - Church Attendance and Lyrics System" />
     <title>FGFT Church App</title>
+    <script>
+      (function () {
+        var theme = localStorage.getItem('site-theme') || 'default';
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
