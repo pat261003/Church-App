@@ -866,10 +866,10 @@ ${lastSunday ? 'Communion Officiator: Ptr. Manny\nAssistants: Bro. Juan, Bro. Ca
                             className="input-field text-base sm:text-sm"
                             placeholder={
                               monthEnd
-                                ? `Enter name for ${position}`
+                                ? `Enter name of the one assigned for ${position}`
                                 : optional
                                   ? 'If none, just leave blank'
-                                  : `Enter name for ${position}`
+                                  : `Enter name of the one assigned for ${position}`
                             }
                           />
                         </div>
