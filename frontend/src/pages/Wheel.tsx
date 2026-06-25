@@ -148,6 +148,42 @@ function getWheelTextRotation(angle: number) {
   return rotation;
 }
 
+function getPreviewCandidates(entries: string[], chosenIndex: number, chosenValue: string) {
+  const maxPossible = Math.max(entries.length - 1, 0);
+
+  if (maxPossible === 0) return [];
+
+  const desiredCount = Math.min(
+    maxPossible,
+    3 + Math.floor(Math.random() * 3)
+  );
+
+  const candidates: string[] = [];
+
+  for (let offset = desiredCount; offset >= 1; offset--) {
+    const index = (chosenIndex - offset + entries.length) % entries.length;
+    const value = entries[index];
+
+    if (value !== chosenValue && !candidates.includes(value)) {
+      candidates.push(value);
+    }
+  }
+
+  if (candidates.length < desiredCount) {
+    entries.forEach(value => {
+      if (
+        value !== chosenValue &&
+        !candidates.includes(value) &&
+        candidates.length < desiredCount
+      ) {
+        candidates.push(value);
+      }
+    });
+  }
+
+  return candidates;
+}
+
 function createWheel(index: number, overrides?: Partial<WheelData>): WheelData {
   return {
     id: createId('wheel'),
@@ -214,6 +250,7 @@ export default function Wheel() {
   const [wheels, setWheels] = useState<WheelData[]>(() => getInitialWheels());
   const timeoutRefs = useRef<Record<string, number>>({});
   const previewTimeoutRefs = useRef<Record<string, number>>({});
+  const previewIntervalRefs = useRef<Record<string, number>>({});
 
   useEffect(() => {
     const safeWheels = wheels.map(wheel => ({
@@ -233,6 +270,10 @@ export default function Wheel() {
 
       Object.values(previewTimeoutRefs.current).forEach(timeoutId => {
         window.clearTimeout(timeoutId);
+      });
+
+      Object.values(previewIntervalRefs.current).forEach(intervalId => {
+        window.clearInterval(intervalId);
       });
     };
   }, []);
@@ -280,6 +321,11 @@ export default function Wheel() {
     if (previewTimeoutRefs.current[wheelId]) {
       window.clearTimeout(previewTimeoutRefs.current[wheelId]);
       delete previewTimeoutRefs.current[wheelId];
+    }
+
+    if (previewIntervalRefs.current[wheelId]) {
+      window.clearInterval(previewIntervalRefs.current[wheelId]);
+      delete previewIntervalRefs.current[wheelId];
     }
 
     setWheels(prev => prev.filter(wheel => wheel.id !== wheelId));
@@ -342,6 +388,7 @@ export default function Wheel() {
     const extraRotation = (targetBaseRotation - currentRotation + 360) % 360;
     const fullSpins = 6 * 360;
     const nextRotation = wheel.rotation + fullSpins + extraRotation;
+    const previewCandidates = getPreviewCandidates(entries, chosenIndex, chosenValue);
 
     updateWheel(wheelId, {
       spinning: true,
@@ -358,13 +405,29 @@ export default function Wheel() {
       window.clearTimeout(previewTimeoutRefs.current[wheelId]);
     }
 
+    if (previewIntervalRefs.current[wheelId]) {
+      window.clearInterval(previewIntervalRefs.current[wheelId]);
+    }
+
+    let previewIndex = 0;
+
     previewTimeoutRefs.current[wheelId] = window.setTimeout(() => {
+      if (previewCandidates.length === 0) return;
+
       updateWheel(wheelId, {
-        previewWinner: chosenValue,
+        previewWinner: previewCandidates[previewIndex],
       });
 
+      previewIntervalRefs.current[wheelId] = window.setInterval(() => {
+        previewIndex = (previewIndex + 1) % previewCandidates.length;
+
+        updateWheel(wheelId, {
+          previewWinner: previewCandidates[previewIndex],
+        });
+      }, 430);
+
       delete previewTimeoutRefs.current[wheelId];
-    }, 3700);
+    }, 3000);
 
     timeoutRefs.current[wheelId] = window.setTimeout(() => {
       const result: WheelResult = {
@@ -373,6 +436,16 @@ export default function Wheel() {
         source: wheel.sourceLabel,
         created_at: new Date().toISOString(),
       };
+
+      if (previewIntervalRefs.current[wheelId]) {
+        window.clearInterval(previewIntervalRefs.current[wheelId]);
+        delete previewIntervalRefs.current[wheelId];
+      }
+
+      if (previewTimeoutRefs.current[wheelId]) {
+        window.clearTimeout(previewTimeoutRefs.current[wheelId]);
+        delete previewTimeoutRefs.current[wheelId];
+      }
 
       setWheels(prev =>
         prev.map(currentWheel => {
@@ -608,7 +681,7 @@ export default function Wheel() {
                       <div className="absolute top-5 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
                         <div className="wheel-winner-preview rounded-2xl bg-white/95 border-2 border-primary px-4 py-2 shadow-xl text-center min-w-[170px]">
                           <p className="text-[10px] font-bold text-primary uppercase tracking-wide whitespace-nowrap">
-                            {wheel.previewWinner ? 'Almost there...' : 'Selecting...'}
+                            {wheel.previewWinner ? 'Near the arrow...' : 'Selecting...'}
                           </p>
 
                           <p className="text-sm font-extrabold text-church-navy break-words leading-tight mt-0.5">
