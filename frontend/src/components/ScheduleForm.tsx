@@ -781,7 +781,7 @@ Activity of the Day: Prayer for birthday and anniversary celebrants`}
                             placeholder={
                               optional
                                 ? 'If none, just leave blank'
-                                : `Enter name for ${position}`
+                                : `Enter the name of the one assigned for ${position}`
                             }
                           />
                         </div>
