@@ -121,6 +121,21 @@ function getTextColor(color: string) {
   return lightColors.includes(color) ? '#0B1957' : '#FFFFFF';
 }
 
+function getWheelFontSize(count: number) {
+  if (count <= 8) return '12';
+  if (count <= 14) return '10';
+  if (count <= 24) return '8';
+  if (count <= 40) return '6.5';
+  return '5';
+}
+
+function getWheelLabelRadius(count: number) {
+  if (count <= 8) return 88;
+  if (count <= 14) return 96;
+  if (count <= 24) return 104;
+  return 112;
+}
+
 function createWheel(index: number, overrides?: Partial<WheelData>): WheelData {
   return {
     id: createId('wheel'),
@@ -595,8 +610,10 @@ export default function Wheel() {
                             const startAngle = index * sliceAngle;
                             const endAngle = startAngle + sliceAngle;
                             const middleAngle = startAngle + sliceAngle / 2;
-                            const labelPosition = polarToCartesian(160, 160, 92, middleAngle);
+                            const labelRadius = getWheelLabelRadius(entries.length);
+                            const labelPosition = polarToCartesian(160, 160, labelRadius, middleAngle);
                             const color = WHEEL_COLORS[index % WHEEL_COLORS.length];
+                            const fontSize = getWheelFontSize(entries.length);
 
                             return (
                               <g key={`${entry}-${index}`}>
@@ -607,20 +624,18 @@ export default function Wheel() {
                                   strokeWidth="2"
                                 />
 
-                                {entries.length <= 30 && (
-                                  <text
+                                <text
                                     x={labelPosition.x}
                                     y={labelPosition.y}
                                     textAnchor="middle"
                                     dominantBaseline="middle"
                                     fill={getTextColor(color)}
-                                    fontSize={entries.length > 14 ? '9' : '11'}
+                                    fontSize={fontSize}
                                     fontWeight="700"
                                     transform={`rotate(${middleAngle}, ${labelPosition.x}, ${labelPosition.y})`}
-                                  >
+                                    >
                                     {getShortLabel(entry)}
-                                  </text>
-                                )}
+                                </text>
                               </g>
                             );
                           })
