@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import PaletteToggle from './PaletteToggle';
 
-type IconName = 'home' | 'attendance' | 'dashboard' | 'songs' | 'lineup' | 'schedule';
+type IconName = 'home' | 'attendance' | 'dashboard' | 'songs' | 'lineup' | 'schedule' |'wheel';
 
 const links: {
   to: string;
@@ -17,6 +17,7 @@ const links: {
   { to: '/songs', label: 'Songs', shortLabel: 'Songs', icon: 'songs', quick: true },
   { to: '/lineups', label: 'Lineup', shortLabel: 'Lineup', icon: 'lineup', quick: true },
   { to: '/schedules', label: 'Schedule', shortLabel: 'Sched', icon: 'schedule', quick: true },
+  { to: '/wheel', label: 'Wheel', shortLabel: 'Wheel', icon: 'wheel', quick: false },
 ];
 
 function NavIcon({ name, active }: { name: IconName; active: boolean }) {
@@ -86,6 +87,19 @@ function NavIcon({ name, active }: { name: IconName; active: boolean }) {
       </svg>
     );
   }
+
+  if (name === 'wheel') {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 3v3m0 12v3m9-9h-3M6 12H3m15.364-6.364l-2.121 2.121M7.757 16.243l-2.121 2.121m12.728 0l-2.121-2.121M7.757 7.757L5.636 5.636M12 8a4 4 0 100 8 4 4 0 000-8z"
+      />
+    </svg>
+  );
+}
 
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">

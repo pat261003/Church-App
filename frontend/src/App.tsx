@@ -22,6 +22,7 @@ import AddSchedule from './pages/AddSchedule';
 import EditSchedule from './pages/EditSchedule';
 import ScheduleDetail from './pages/ScheduleDetail';
 import PrintSchedule from './pages/PrintSchedule';
+import Wheel from './pages/Wheel';
 
 export default function App() {
   useEffect(() => {
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="/schedules/:id" element={<ScheduleDetail />} />
             <Route path="/schedules/:id/edit" element={<EditSchedule />} />
             <Route path="/print/schedule/:id" element={<PrintSchedule />} />
+            <Route path="/wheel" element={<Wheel />} />
           </Routes>
         </main>
         <Toaster
