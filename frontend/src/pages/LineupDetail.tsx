@@ -46,24 +46,34 @@ export default function LineupDetail() {
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-church-navy">{lineup.title}</h1>
-          <p className="text-gray-500 text-sm">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-church-navy break-words">
+            {lineup.title}
+          </h1>
+
+          <p className="text-gray-500 text-sm mt-1">
             {formatDatePH(lineup.service_date)} · Song Leader: {lineup.song_leader}
           </p>
-          {lineup.notes && <p className="text-sm text-gray-500 mt-1">{lineup.notes}</p>}
-        </div>
 
-        <div className="flex gap-2 flex-wrap">
-          <Link to={`/lineups/${lineup.id}/edit`} className="btn-secondary text-xs">
-            Edit
-          </Link>
-          <Link to={`/print/lineup/${lineup.id}`} target="_blank" className="btn-secondary text-xs">
-            Print
-          </Link>
-          <Link to="/lineups" className="btn-secondary text-xs">
-            ← Back
-          </Link>
+          {lineup.notes && (
+            <p className="text-sm text-gray-500 mt-1">
+              {lineup.notes}
+            </p>
+          )}
+
+          <div className="flex gap-2 flex-wrap mt-3">
+            <Link to="/lineups" className="btn-secondary text-xs">
+              ← Back
+            </Link>
+
+            <Link to={`/lineups/${lineup.id}/edit`} className="btn-secondary text-xs">
+              Edit
+            </Link>
+
+            <Link to={`/print/lineup/${lineup.id}`} className="btn-secondary text-xs">
+              Print
+            </Link>
+          </div>
         </div>
       </div>
 

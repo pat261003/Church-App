@@ -72,26 +72,34 @@ export default function ScheduleDetail() {
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-church-navy">{schedule.title}</h1>
-          <p className="text-sm text-gray-500">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-church-navy break-words">
+            {schedule.title}
+          </h1>
+
+          <p className="text-sm text-gray-500 mt-1">
             {MONTHS[schedule.schedule_month]} {schedule.schedule_year}
           </p>
-          {schedule.notes && <p className="text-sm text-gray-500 mt-1">{schedule.notes}</p>}
-        </div>
 
-        <div className="flex gap-2 flex-wrap">
-          <Link to={`/schedules/${schedule.id}/edit`} className="btn-secondary text-xs">
-            Edit
-          </Link>
+          {schedule.notes && (
+            <p className="text-sm text-gray-500 mt-1">
+              {schedule.notes}
+            </p>
+          )}
 
-          <Link to={`/print/schedule/${schedule.id}`} target="_blank" className="btn-secondary text-xs">
-            Export PDF
-          </Link>
+          <div className="flex gap-2 flex-wrap mt-3">
+            <Link to="/schedules" className="btn-secondary text-xs">
+              ← Back
+            </Link>
 
-          <Link to="/schedules" className="btn-secondary text-xs">
-            ← Back
-          </Link>
+            <Link to={`/schedules/${schedule.id}/edit`} className="btn-secondary text-xs">
+              Edit
+            </Link>
+
+            <Link to={`/print/schedule/${schedule.id}`} className="btn-secondary text-xs">
+              Print
+            </Link>
+          </div>
         </div>
       </div>
 

@@ -110,9 +110,13 @@ export default function PrintSchedule() {
         ))}
       </div>
 
-      <div className="no-print mt-6 text-center">
+      <div className="no-print mt-6 flex gap-3 justify-center flex-col sm:flex-row">
         <button onClick={() => window.print()} className="btn-primary">
           Print / Save as PDF
+        </button>
+
+        <button onClick={() => window.history.back()} className="btn-secondary">
+          Back
         </button>
       </div>
     </div>

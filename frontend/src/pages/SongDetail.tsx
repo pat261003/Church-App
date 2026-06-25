@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetchSong } from '../api/songs';
 import { Song, SongSection } from '../types';
@@ -178,24 +178,47 @@ export default function SongDetail() {
     <div className="flex flex-col gap-6 max-w-2xl mx-auto">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-church-navy">{song.title}</h1>
-          {song.artist && <p className="text-gray-500 text-sm">{song.artist}</p>}
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-church-navy break-words">
+            {song.title}
+          </h1>
+
+          {song.artist && (
+            <p className="text-gray-500 text-sm mt-1">
+              {song.artist}
+            </p>
+          )}
+
           {song.tags && (
-            <div className="flex gap-1 mt-1 flex-wrap">
+            <div className="flex gap-1 mt-2 flex-wrap">
               {song.tags.split(',').map(t => (
-                <span key={t} className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded">
+                <span
+                  key={t}
+                  className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded"
+                >
                   {t.trim()}
                 </span>
               ))}
             </div>
           )}
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Link to={`/songs/${id}/edit`} className="btn-secondary text-xs">Edit</Link>
-          <Link to={`/print/song/${id}`} target="_blank" className="btn-secondary text-xs">Print</Link>
-          <a href={getSongDocxExportUrl(id!)} download className="btn-secondary text-xs">Export DOCX</a>
-          <Link to="/songs" className="btn-secondary text-xs">← Back</Link>
+
+          <div className="flex gap-2 flex-wrap mt-3">
+            <Link to="/songs" className="btn-secondary text-xs">
+              ← Back
+            </Link>
+
+            <Link to={`/songs/${id}/edit`} className="btn-secondary text-xs">
+              Edit
+            </Link>
+
+            <button onClick={() => window.print()} className="btn-secondary text-xs">
+              Print
+            </button>
+
+            <a href={getSongDocxExportUrl(id!)} download className="btn-secondary text-xs">
+              Export DOCX
+            </a>
+          </div>
         </div>
       </div>
 

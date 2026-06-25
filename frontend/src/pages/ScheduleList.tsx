@@ -84,7 +84,7 @@ export default function ScheduleList() {
                   Edit
                 </Link>
 
-                <Link to={`/print/schedule/${schedule.id}`} target="_blank" className="btn-secondary text-xs">
+                <Link to={`/print/schedule/${schedule.id}`} className="btn-secondary text-xs">
                   PDF
                 </Link>
 

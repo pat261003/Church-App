@@ -212,7 +212,6 @@ function handleXLSXMonth() {
             </button>
             <Link
               to={`/print/attendance?date=${date}`}
-              target="_blank"
               className="btn-secondary text-xs"
             >
               Print
