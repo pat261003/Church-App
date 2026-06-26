@@ -5,7 +5,11 @@
 @tailwind utilities;
 
 :root {
-  /* Original theme 
+  /*
+    Original theme - commented out.
+    To go back to the old colors, uncomment this block
+    and comment out the NEW PINK / BLUE PALETTE block below.
+
   --color-primary: 91 127 166;
   --color-primary-dark: 61 92 125;
   --color-primary-light: 234 240 247;
@@ -17,11 +21,9 @@
 
   --color-card: 255 255 255;
   --color-surface: 255 255 255;
-  
-}*/
+  */
 
-html[data-theme='rose'] {
-  /* New uploaded palette */
+  /* NEW PINK / BLUE PALETTE - active default theme */
   --color-primary: 11 25 87;              /* #0B1957 */
   --color-primary-dark: 7 17 62;
   --color-primary-light: 255 219 209;     /* #FFDBD1 */
@@ -33,6 +35,21 @@ html[data-theme='rose'] {
 
   --color-card: 255 219 209;              /* #FFDBD1 */
   --color-surface: 248 243 234;           /* #F8F3EA */
+}
+
+/* You can keep this. It will use the same colors if data-theme="rose" still exists. */
+html[data-theme='rose'] {
+  --color-primary: 11 25 87;
+  --color-primary-dark: 7 17 62;
+  --color-primary-light: 255 219 209;
+
+  --color-church-navy: 11 25 87;
+  --color-church-blue: 250 158 188;
+  --color-church-lightblue: 248 243 234;
+  --color-church-border: 250 158 188;
+
+  --color-card: 255 219 209;
+  --color-surface: 248 243 234;
 }
 
 html {
@@ -81,7 +98,8 @@ html {
   .section-label {
     @apply inline-block bg-primary text-white text-xs font-bold px-2 py-1 rounded uppercase tracking-wider;
   }
-    .btn-edit-small {
+
+  .btn-edit-small {
     @apply inline-flex items-center justify-center gap-1.5 rounded-full border border-church-border
            px-3 py-1.5 text-xs font-bold text-primary transition-all duration-200
            hover:bg-primary hover:text-white hover:shadow-sm active:scale-95;
@@ -192,6 +210,7 @@ html {
     transform: scale(1.055);
   }
 }
+
 .wheel-winner-preview {
   animation: wheelWinnerPreview 0.45s ease-in-out infinite alternate;
 }
@@ -231,5 +250,4 @@ html {
     size: A4 portrait;
     margin: 12mm;
   }
-}
 }
