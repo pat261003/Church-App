@@ -402,7 +402,7 @@ function PinnedUpcomingScheduleCard({
                   No assignments added yet for this Sunday.
                 </div>
               ) : (
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-1.5">
                   {visibleAssignments.map(assignment => (
                     <div
                       key={assignment.id || `${assignment.position}-${assignment.person_name}`}
@@ -640,53 +640,53 @@ export default function Home() {
   }, [lastSundayDate, currentSundayDate]);
 
   return (
-  <div className="w-full flex flex-col items-center gap-6 sm:gap-8 py-4 sm:py-6 px-3 sm:px-5 lg:px-8">
-      <div className="w-full grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
-        <section className="relative w-full overflow-hidden rounded-3xl border border-church-border shadow-xl min-h-[360px] sm:min-h-[430px] xl:min-h-[620px] flex items-end">
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{
-              backgroundImage: `url(${CHURCH_BACKGROUND_IMAGE})`,
-            }}
-          />
+  <div className="w-full flex flex-col items-center gap-6 sm:gap-8 py-4 sm:py-6 overflow-x-hidden">
+     <div className="relative left-1/2 w-[calc(100vw-1rem)] -translate-x-1/2 px-2 sm:w-[calc(100vw-2rem)] sm:px-0 grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
+      <section className="relative w-full overflow-hidden rounded-3xl border border-church-border shadow-xl min-h-[360px] sm:min-h-[430px] xl:min-h-[620px] flex items-end">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: `url(${CHURCH_BACKGROUND_IMAGE})`,
+          }}
+        />
 
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/20" />
 
-          <div className="relative z-10 w-full p-5 sm:p-8 md:p-10 text-white">
-            <div className="max-w-3xl">
-              <img
-                src="/logo.jpg"
-                alt="FGFTI"
-                className="h-20 w-20 sm:h-24 sm:w-24 mb-4 rounded-full shadow-lg bg-white object-cover border-4 border-white/80"
-              />
+        <div className="relative z-10 w-full p-5 sm:p-8 md:p-10 text-white">
+          <div className="max-w-3xl">
+            <img
+              src="/logo.jpg"
+              alt="FGFTI"
+              className="h-20 w-20 sm:h-24 sm:w-24 mb-4 rounded-full shadow-lg bg-white object-cover border-4 border-white/80"
+            />
 
-              <p className="text-xs sm:text-sm font-bold uppercase tracking-[0.25em] text-white/80">
-                Welcome to our church
-              </p>
+            <p className="text-xs sm:text-sm font-bold uppercase tracking-[0.25em] text-white/80">
+              Welcome to our church
+            </p>
 
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mt-3 leading-tight">
-                Full Gospel Faith Temple Inc.
-              </h1>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mt-3 leading-tight">
+              Full Gospel Faith Temple Inc.
+            </h1>
 
-              <p className="text-sm sm:text-base text-white/85 mt-3 max-w-2xl">
-                Church Attendance &amp; Lyrics System · Est. 1967
-              </p>
+            <p className="text-sm sm:text-base text-white/85 mt-3 max-w-2xl">
+              Church Attendance &amp; Lyrics System · Est. 1967
+            </p>
 
-              <div className="flex flex-col sm:flex-row gap-3 mt-6">
-                <a
-                  href={CHURCH_FACEBOOK_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center rounded-xl bg-white text-primary font-bold px-5 py-3 shadow-md hover:scale-[1.02] active:scale-95 transition-transform"
-                >
-                  Visit Church Facebook Page
-                </a>
-              </div>
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+              <a
+                href={CHURCH_FACEBOOK_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-xl bg-white text-primary font-bold px-5 py-3 shadow-md hover:scale-[1.02] active:scale-95 transition-transform"
+              >
+                Visit Church Facebook Page
+              </a>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-      <div className="w-full h-full">
+      <div className="w-full h-full min-w-0">
         <PinnedUpcomingScheduleCard
           schedule={upcomingSchedule}
           dateItem={upcomingScheduleDate}
