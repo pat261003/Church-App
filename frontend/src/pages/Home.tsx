@@ -12,6 +12,9 @@ import {
 
 import { getAttendanceGroupCounts } from '../utils/attendanceGroups';
 
+const CHURCH_FACEBOOK_URL = 'https://www.facebook.com/profile.php?id=61555244094090';
+const CHURCH_BACKGROUND_IMAGE = '/images/church-members.jpg';
+
 function formatLocalDate(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -434,21 +437,56 @@ export default function Home() {
 
   return (
     <div className="flex flex-col items-center gap-6 sm:gap-8 py-4 sm:py-6">
-      <div className="text-center max-w-lg px-2">
-        <img
-          src="/logo.jpg"
-          alt="FGFTI"
-          className="mx-auto h-24 w-24 mb-4 rounded-full shadow-md bg-white object-cover"
+      <section className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-church-border shadow-xl min-h-[360px] sm:min-h-[430px] flex items-end">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: `url(${CHURCH_BACKGROUND_IMAGE})`,
+          }}
         />
 
-        <h1 className="text-2xl sm:text-3xl font-bold text-primary mb-2">
-          Full Gospel Faith Temple Inc.
-        </h1>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/20" />
 
-        <p className="text-gray-500 text-sm">
-          Church Attendance &amp; Lyrics System · Est. 1967
-        </p>
-      </div>
+        <div className="relative z-10 w-full p-5 sm:p-8 md:p-10 text-white">
+          <div className="max-w-3xl">
+            <img
+              src="/logo.jpg"
+              alt="FGFTI"
+              className="h-20 w-20 sm:h-24 sm:w-24 mb-4 rounded-full shadow-lg bg-white object-cover border-4 border-white/80"
+            />
+
+            <p className="text-xs sm:text-sm font-bold uppercase tracking-[0.25em] text-white/80">
+              Welcome to our church
+            </p>
+
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mt-3 leading-tight">
+              Full Gospel Faith Temple Inc.
+            </h1>
+
+            <p className="text-sm sm:text-base text-white/85 mt-3 max-w-2xl">
+              Church Attendance &amp; Lyrics System · Est. 1967
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+              <a
+                href={CHURCH_FACEBOOK_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-xl bg-white text-primary font-bold px-5 py-3 shadow-md hover:scale-[1.02] active:scale-95 transition-transform"
+              >
+                Visit Church Facebook Page
+              </a>
+
+              <Link
+                to="/attendance"
+                className="inline-flex items-center justify-center rounded-xl border border-white/60 bg-white/10 text-white font-bold px-5 py-3 backdrop-blur hover:bg-white/20 active:scale-95 transition-all"
+              >
+                Open Attendance
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <HomeAccordionSection
         title="Attendance Summary"

@@ -538,7 +538,19 @@ export default function Wheel() {
                 <div>
                   <input
                     value={wheel.title}
-                    onChange={e => updateWheel(wheel.id, { title: e.target.value || `Wheel ${wheelIndex + 1}` })}
+                    onChange={e =>
+                      updateWheel(wheel.id, {
+                        title: e.target.value,
+                      })
+                    }
+                    onBlur={() => {
+                      if (!wheel.title.trim()) {
+                        updateWheel(wheel.id, {
+                          title: `Wheel ${wheelIndex + 1}`,
+                        });
+                      }
+                    }}
+                    placeholder={`Wheel ${wheelIndex + 1}`}
                     className="bg-transparent text-xl font-bold text-church-navy focus:outline-none focus:ring-2 focus:ring-primary rounded-lg px-2 py-1 -ml-2 max-w-full"
                     aria-label="Wheel title"
                   />

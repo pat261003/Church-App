@@ -5,11 +5,33 @@ import { query } from '../db';
 import { normalizeName } from '../utils/normalize';
 import ExcelJS from 'exceljs';
 
+
+
 const router = Router();
+
+let lastAttendanceCleanupAt = 0;
+
+async function deleteOldAttendanceRecords() {
+  const twelveHours = 12 * 60 * 60 * 1000;
+  const now = Date.now();
+
+  if (now - lastAttendanceCleanupAt < twelveHours) {
+    return;
+  }
+
+  await query(`
+    DELETE FROM attendance
+    WHERE attendance_date < CURRENT_DATE - INTERVAL '3 years'
+  `);
+
+  lastAttendanceCleanupAt = now;
+}
 
 // GET /api/attendance?date=YYYY-MM-DD
 router.get('/', async (req: Request, res: Response) => {
   try {
+    await deleteOldAttendanceRecords();
+
     const { date } = req.query;
     if (date) {
       const result = await query(
@@ -31,6 +53,8 @@ router.get('/', async (req: Request, res: Response) => {
 // GET /api/attendance/month?month=MM&year=YYYY
 router.get('/month', async (req: Request, res: Response) => {
   try {
+    await deleteOldAttendanceRecords();
+
     const { month, year } = req.query;
     if (!month || !year) {
       return res.status(400).json({ error: 'month and year are required' });
@@ -52,6 +76,8 @@ router.get('/month', async (req: Request, res: Response) => {
 // GET /api/attendance/stats?date=YYYY-MM-DD
 router.get('/stats', async (req: Request, res: Response) => {
   try {
+    await deleteOldAttendanceRecords();
+
     const { date } = req.query;
     const today = new Date().toISOString().split('T')[0];
     const targetDate = (date as string) || today;
@@ -106,6 +132,8 @@ router.get('/stats', async (req: Request, res: Response) => {
 // GET /api/attendance/export/csv?date=YYYY-MM-DD or ?month=MM&year=YYYY
 router.get('/export/csv', async (req: Request, res: Response) => {
   try {
+    await deleteOldAttendanceRecords();
+
     const { date, month, year } = req.query;
     let rows;
     let filename = 'attendance';
@@ -186,6 +214,8 @@ router.get('/export/csv', async (req: Request, res: Response) => {
 // GET /api/attendance/export/xlsx?date=YYYY-MM-DD or ?month=MM&year=YYYY
 router.get('/export/xlsx', async (req: Request, res: Response) => {
   try {
+    await deleteOldAttendanceRecords();
+
     const { date, month, year } = req.query;
 
     let rows;
@@ -282,6 +312,8 @@ router.post(
   validate,
   async (req: Request, res: Response) => {
     try {
+      await deleteOldAttendanceRecords();
+
       const { full_name, attendance_date, contact_number, ministry_group, notes } = req.body;
       const normalized = normalizeName(full_name);
 
@@ -335,6 +367,8 @@ router.put(
   validate,
   async (req: Request, res: Response) => {
     try {
+      await deleteOldAttendanceRecords();
+
       const { id } = req.params;
       const { full_name, contact_number, ministry_group, notes } = req.body;
       const normalized = normalizeName(full_name);

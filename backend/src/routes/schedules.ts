@@ -5,6 +5,55 @@ import { query as dbQuery } from '../db';
 
 const router = Router();
 
+let lastScheduleCleanupAt = 0;
+
+async function deleteOldSchedules() {
+  const twelveHours = 12 * 60 * 60 * 1000;
+  const now = Date.now();
+
+  if (now - lastScheduleCleanupAt < twelveHours) {
+    return;
+  }
+
+  const oldScheduleIdsQuery = `
+    SELECT ss.id
+    FROM service_schedules ss
+    LEFT JOIN service_schedule_dates ssd ON ssd.schedule_id = ss.id
+    GROUP BY ss.id, ss.schedule_year, ss.schedule_month
+    HAVING COALESCE(
+      MAX(ssd.service_date),
+      make_date(ss.schedule_year::int, ss.schedule_month::int, 1)
+    ) < (CURRENT_DATE - INTERVAL '1 year')::date
+  `;
+
+  await dbQuery(
+    `
+    DELETE FROM service_schedule_assignments
+    WHERE date_id IN (
+      SELECT ssd.id
+      FROM service_schedule_dates ssd
+      WHERE ssd.schedule_id IN (${oldScheduleIdsQuery})
+    )
+    `
+  );
+
+  await dbQuery(
+    `
+    DELETE FROM service_schedule_dates
+    WHERE schedule_id IN (${oldScheduleIdsQuery})
+    `
+  );
+
+  await dbQuery(
+    `
+    DELETE FROM service_schedules
+    WHERE id IN (${oldScheduleIdsQuery})
+    `
+  );
+
+  lastScheduleCleanupAt = now;
+}
+
 async function getScheduleById(id: string) {
   const scheduleResult = await dbQuery(
     `SELECT * FROM service_schedules WHERE id = $1`,
@@ -48,16 +97,44 @@ async function getScheduleById(id: string) {
 // GET /api/schedules
 router.get('/', async (_req: Request, res: Response) => {
   try {
+    await deleteOldSchedules();
+
     const result = await dbQuery(
-      `SELECT 
-          ss.*,
-          COUNT(DISTINCT ssd.id) AS service_count,
-          COUNT(ssa.id) AS assignment_count
-       FROM service_schedules ss
-       LEFT JOIN service_schedule_dates ssd ON ssd.schedule_id = ss.id
-       LEFT JOIN service_schedule_assignments ssa ON ssa.date_id = ssd.id
-       GROUP BY ss.id
-       ORDER BY ss.schedule_year DESC, ss.schedule_month DESC, ss.created_at DESC`
+      `
+      WITH schedule_summary AS (
+        SELECT 
+            ss.*,
+            COUNT(DISTINCT ssd.id) AS service_count,
+            COUNT(ssa.id) AS assignment_count,
+            COALESCE(
+              MIN(ssd.service_date),
+              make_date(ss.schedule_year::int, ss.schedule_month::int, 1)
+            ) AS first_service_date,
+            COALESCE(
+              MAX(ssd.service_date),
+              (make_date(ss.schedule_year::int, ss.schedule_month::int, 1) + INTERVAL '1 month - 1 day')::date
+            ) AS last_service_date
+         FROM service_schedules ss
+         LEFT JOIN service_schedule_dates ssd ON ssd.schedule_id = ss.id
+         LEFT JOIN service_schedule_assignments ssa ON ssa.date_id = ssd.id
+         GROUP BY ss.id
+      )
+      SELECT *
+      FROM schedule_summary
+      WHERE last_service_date >= (CURRENT_DATE - INTERVAL '1 month')::date
+      ORDER BY
+        CASE
+          WHEN CURRENT_DATE BETWEEN first_service_date AND last_service_date THEN 0
+          WHEN first_service_date > CURRENT_DATE THEN 1
+          ELSE 2
+        END ASC,
+        CASE
+          WHEN CURRENT_DATE BETWEEN first_service_date AND last_service_date THEN CURRENT_DATE
+          WHEN first_service_date > CURRENT_DATE THEN first_service_date
+          ELSE last_service_date
+        END ASC,
+        created_at DESC
+      `
     );
 
     return res.json(result.rows);
@@ -77,6 +154,8 @@ router.get(
   validate,
   async (req: Request, res: Response) => {
     try {
+      await deleteOldSchedules();
+
       const name = String(req.query.name || '').trim();
       const date = String(req.query.date || '').slice(0, 10);
 
@@ -116,6 +195,8 @@ router.get(
   validate,
   async (req: Request, res: Response) => {
     try {
+      await deleteOldSchedules();
+
       const schedule = await getScheduleById(req.params.id);
 
       if (!schedule) {
@@ -142,6 +223,8 @@ router.post(
   validate,
   async (req: Request, res: Response) => {
     try {
+      await deleteOldSchedules();
+
       const { title, schedule_month, schedule_year, notes, dates } = req.body;
 
       const scheduleResult = await dbQuery(
@@ -224,6 +307,8 @@ router.put(
   validate,
   async (req: Request, res: Response) => {
     try {
+      await deleteOldSchedules();
+
       const { id } = req.params;
       const { title, schedule_month, schedule_year, notes, dates } = req.body;
 
