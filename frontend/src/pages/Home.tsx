@@ -328,51 +328,60 @@ function PinnedUpcomingScheduleCard({
   );
 
   return (
-    <div className="w-full lg:w-[390px] rounded-2xl border border-white/30 bg-white/95 text-church-navy shadow-2xl backdrop-blur-md overflow-hidden">
-      <div className="bg-primary px-4 py-2.5 text-white">
+    <div className="w-full h-full rounded-3xl border border-church-border bg-[rgb(var(--color-surface))] text-church-navy shadow-xl overflow-hidden">
+      <div className="bg-primary px-4 py-3 text-white">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-white/80">
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/80">
               Pinned Sunday Preview
             </p>
 
-            <h2 className="font-extrabold text-base leading-tight">
+            <h2 className="font-extrabold text-lg leading-tight">
               Upcoming Sunday
             </h2>
           </div>
 
-          <div className="rounded-full bg-white/15 px-2.5 py-1 text-center shrink-0">
-            <p className="text-[9px] text-white/75">Assigned</p>
+          <div className="rounded-full bg-white/15 px-3 py-1 text-center shrink-0">
+            <p className="text-[9px] text-white/75">Items</p>
             <p className="text-base font-extrabold leading-none">
-              {visibleAssignments.length}
+              {visibleAssignments.length + totalSongs}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="p-3 flex flex-col gap-3">
-        <div>
-          <p className="text-[10px] font-bold text-primary uppercase tracking-wide">
-            Schedule
-          </p>
+      <div className="p-3 sm:p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* Schedule side */}
+        <div className="rounded-2xl border border-church-border bg-white p-3">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <p className="text-[10px] font-bold text-primary uppercase tracking-wide">
+              Schedule
+            </p>
+
+            {!loading && schedule && dateItem && (
+              <span className="text-[10px] text-gray-500 bg-primary-light px-2 py-0.5 rounded-full">
+                {visibleAssignments.length} assigned
+              </span>
+            )}
+          </div>
 
           {loading ? (
-            <div className="mt-2 animate-pulse space-y-2">
+            <div className="animate-pulse space-y-2">
               <div className="h-3 bg-primary-light rounded w-3/4" />
               <div className="h-3 bg-primary-light rounded w-1/2" />
               <div className="h-3 bg-primary-light rounded w-2/3" />
             </div>
           ) : !schedule || !dateItem ? (
-            <div className="mt-2 rounded-lg bg-church-lightblue p-2.5 text-xs text-gray-500">
+            <div className="rounded-lg bg-church-lightblue p-2.5 text-xs text-gray-500">
               No schedule found yet.
             </div>
           ) : (
             <>
-              <p className="text-[11px] font-bold text-church-navy mt-1">
+              <p className="text-[11px] font-bold text-primary">
                 {formatDate(dateItem.service_date)}
               </p>
 
-              <p className="text-[11px] text-gray-500 break-words">
+              <p className="text-[11px] font-semibold text-gray-500 break-words mt-0.5">
                 {schedule.title}
               </p>
 
@@ -393,13 +402,13 @@ function PinnedUpcomingScheduleCard({
                   No assignments added yet for this Sunday.
                 </div>
               ) : (
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-1.5">
+                <div className="mt-2 flex flex-col gap-1.5">
                   {visibleAssignments.map(assignment => (
                     <div
                       key={assignment.id || `${assignment.position}-${assignment.person_name}`}
-                      className="rounded-lg border border-church-border bg-white px-2.5 py-1.5 shadow-sm"
+                      className="rounded-lg border border-church-border bg-[rgb(var(--color-surface))] px-2.5 py-1.5"
                     >
-                      <div className="grid grid-cols-[5.8rem_1fr] gap-2 items-start">
+                      <div className="grid grid-cols-[5.7rem_1fr] gap-2 items-start">
                         <p className="text-[10px] font-bold text-primary leading-snug break-words">
                           {assignment.position}
                         </p>
@@ -416,10 +425,11 @@ function PinnedUpcomingScheduleCard({
           )}
         </div>
 
-        <div className="border-t border-church-border pt-3">
-          <div className="flex items-center justify-between gap-2">
+        {/* Lineup side */}
+        <div className="rounded-2xl border border-church-border bg-white p-3">
+          <div className="flex items-center justify-between gap-2 mb-2">
             <p className="text-[10px] font-bold text-primary uppercase tracking-wide">
-              Songs to be Sung
+              LINE UP THIS SUNDAY
             </p>
 
             {!loadingLineup && lineup && (
@@ -430,17 +440,17 @@ function PinnedUpcomingScheduleCard({
           </div>
 
           {loadingLineup ? (
-            <div className="mt-2 animate-pulse space-y-2">
+            <div className="animate-pulse space-y-2">
               <div className="h-3 bg-primary-light rounded w-4/5" />
               <div className="h-3 bg-primary-light rounded w-3/5" />
               <div className="h-3 bg-primary-light rounded w-2/3" />
             </div>
           ) : !lineup ? (
-            <div className="mt-2 rounded-lg bg-church-lightblue p-2.5 text-xs text-gray-500">
+            <div className="rounded-lg bg-church-lightblue p-2.5 text-xs text-gray-500">
               No song lineup found yet.
             </div>
           ) : (
-            <div className="mt-2 flex flex-col gap-2">
+            <div className="flex flex-col gap-2">
               <div className="rounded-lg bg-primary-light px-2.5 py-2">
                 <p className="text-[10px] font-bold text-primary uppercase tracking-wide">
                   {lineup.title}
@@ -454,7 +464,7 @@ function PinnedUpcomingScheduleCard({
               {lineupSections.map(section => (
                 <div
                   key={section.id || section.section_name}
-                  className="rounded-lg border border-church-border bg-white px-2.5 py-2 shadow-sm"
+                  className="rounded-lg border border-church-border bg-[rgb(var(--color-surface))] px-2.5 py-2"
                 >
                   <p className="text-[10px] font-bold text-primary uppercase tracking-wide mb-1">
                     {section.section_name}
@@ -492,7 +502,7 @@ function PinnedUpcomingScheduleCard({
           )}
         </div>
 
-        <p className="text-[10px] text-gray-400 text-center">
+        <p className="md:col-span-2 text-[10px] text-gray-400 text-center">
           Pinned preview only. Full clickable schedule and lineup are below.
         </p>
       </div>
@@ -633,8 +643,8 @@ export default function Home() {
 
   return (
     <div className="flex flex-col items-center gap-6 sm:gap-8 py-4 sm:py-6">
-      <div className="w-full max-w-6xl grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_390px] gap-4 items-start">
-        <section className="relative w-full overflow-hidden rounded-3xl border border-church-border shadow-xl min-h-[360px] sm:min-h-[430px] flex items-end">
+      <div className="w-full max-w-[1500px] px-3 sm:px-5 grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
+        <section className="relative w-full overflow-hidden rounded-3xl border border-church-border shadow-xl min-h-[360px] sm:min-h-[430px] xl:min-h-[560px] flex items-end">
           <div
             className="absolute inset-0 bg-cover bg-center"
             style={{
@@ -678,16 +688,16 @@ export default function Home() {
           </div>
         </section>
 
-  <div className="w-full xl:sticky xl:top-4">
-    <PinnedUpcomingScheduleCard
-      schedule={upcomingSchedule}
-      dateItem={upcomingScheduleDate}
-      loading={loadingSchedule}
-      lineup={featuredLineup}
-      loadingLineup={loadingLineup}
-    />
-  </div>
-</div>
+      <div className="w-full h-full">
+        <PinnedUpcomingScheduleCard
+          schedule={upcomingSchedule}
+          dateItem={upcomingScheduleDate}
+          loading={loadingSchedule}
+          lineup={featuredLineup}
+          loadingLineup={loadingLineup}
+        />
+      </div>
+    </div>
 
       <HomeAccordionSection
         title="Attendance Summary"
