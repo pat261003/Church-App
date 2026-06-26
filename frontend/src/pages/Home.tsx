@@ -308,72 +308,32 @@ function PinnedUpcomingScheduleCard({
   schedule,
   dateItem,
   loading,
+  lineup,
+  loadingLineup,
 }: {
   schedule: ServiceSchedule | null;
   dateItem: ServiceScheduleDate | null;
   loading: boolean;
+  lineup: ServiceLineup | null;
+  loadingLineup: boolean;
 }) {
-  if (loading) {
-    return (
-      <div className="w-full lg:w-[360px] rounded-2xl border border-white/30 bg-white/95 text-church-navy shadow-2xl backdrop-blur-md overflow-hidden">
-        <div className="bg-primary px-4 py-2.5 text-white">
-          <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-white/80">
-            Pinned Schedule
-          </p>
-
-          <h2 className="font-extrabold text-base">
-            Loading Sunday assignments...
-          </h2>
-        </div>
-
-        <div className="p-3">
-          <div className="animate-pulse space-y-2">
-            <div className="h-3 bg-primary-light rounded w-3/4" />
-            <div className="h-3 bg-primary-light rounded w-1/2" />
-            <div className="h-3 bg-primary-light rounded w-2/3" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!schedule || !dateItem) {
-    return (
-      <div className="w-full lg:w-[360px] rounded-2xl border border-white/30 bg-white/95 text-church-navy shadow-2xl backdrop-blur-md overflow-hidden">
-        <div className="bg-primary px-4 py-2.5 text-white">
-          <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-white/80">
-            Pinned Schedule
-          </p>
-
-          <h2 className="font-extrabold text-base">
-            Upcoming Sunday
-          </h2>
-        </div>
-
-        <div className="p-3">
-          <p className="text-sm font-semibold text-church-navy">
-            No schedule found yet.
-          </p>
-
-          <p className="text-xs text-gray-500 mt-1">
-            Create or update the schedule so assignments can appear here.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const visibleAssignments = dateItem.assignments.filter(
+  const visibleAssignments = dateItem?.assignments.filter(
     assignment => assignment.person_name?.trim()
+  ) || [];
+
+  const lineupSections = lineup?.sections || [];
+  const totalSongs = lineupSections.reduce(
+    (total, section) => total + section.songs.length,
+    0
   );
 
   return (
-    <div className="w-full lg:w-[360px] rounded-2xl border border-white/30 bg-white/95 text-church-navy shadow-2xl backdrop-blur-md overflow-hidden">
+    <div className="w-full lg:w-[390px] rounded-2xl border border-white/30 bg-white/95 text-church-navy shadow-2xl backdrop-blur-md overflow-hidden">
       <div className="bg-primary px-4 py-2.5 text-white">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-white/80">
-              Pinned Schedule
+              Pinned Sunday Preview
             </p>
 
             <h2 className="font-extrabold text-base leading-tight">
@@ -390,54 +350,150 @@ function PinnedUpcomingScheduleCard({
         </div>
       </div>
 
-      <div className="p-3">
-        <p className="text-[10px] font-bold text-primary uppercase tracking-wide">
-          {formatDate(dateItem.service_date)}
-        </p>
+      <div className="p-3 flex flex-col gap-3">
+        <div>
+          <p className="text-[10px] font-bold text-primary uppercase tracking-wide">
+            Schedule
+          </p>
 
-        <p className="text-xs font-bold text-church-navy mt-0.5 break-words">
-          {schedule.title}
-        </p>
+          {loading ? (
+            <div className="mt-2 animate-pulse space-y-2">
+              <div className="h-3 bg-primary-light rounded w-3/4" />
+              <div className="h-3 bg-primary-light rounded w-1/2" />
+              <div className="h-3 bg-primary-light rounded w-2/3" />
+            </div>
+          ) : !schedule || !dateItem ? (
+            <div className="mt-2 rounded-lg bg-church-lightblue p-2.5 text-xs text-gray-500">
+              No schedule found yet.
+            </div>
+          ) : (
+            <>
+              <p className="text-[11px] font-bold text-church-navy mt-1">
+                {formatDate(dateItem.service_date)}
+              </p>
 
-        {dateItem.activity && (
-          <div className="mt-2 rounded-lg bg-primary-light px-2.5 py-2">
-            <p className="text-[9px] font-bold text-primary uppercase tracking-wide">
-              Activity / Notes
-            </p>
+              <p className="text-[11px] text-gray-500 break-words">
+                {schedule.title}
+              </p>
 
-            <p className="text-[11px] font-semibold text-church-navy whitespace-pre-wrap leading-snug">
-              {dateItem.activity}
-            </p>
-          </div>
-        )}
-
-        {visibleAssignments.length === 0 ? (
-          <div className="mt-3 rounded-lg bg-church-lightblue p-2.5 text-xs text-gray-500">
-            No assignments added yet for this Sunday.
-          </div>
-        ) : (
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-1.5">
-            {visibleAssignments.map(assignment => (
-              <div
-                key={assignment.id || `${assignment.position}-${assignment.person_name}`}
-                className="rounded-lg border border-church-border bg-white px-2.5 py-1.5 shadow-sm"
-              >
-                <div className="grid grid-cols-[5.8rem_1fr] gap-2 items-start">
-                  <p className="text-[10px] font-bold text-primary leading-snug break-words">
-                    {assignment.position}
+              {dateItem.activity && (
+                <div className="mt-2 rounded-lg bg-primary-light px-2.5 py-2">
+                  <p className="text-[9px] font-bold text-primary uppercase tracking-wide">
+                    Activity / Notes
                   </p>
 
-                  <p className="text-[11px] font-extrabold text-church-navy leading-snug break-words">
-                    {assignment.person_name}
+                  <p className="text-[11px] font-semibold text-church-navy whitespace-pre-wrap leading-snug">
+                    {dateItem.activity}
                   </p>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              )}
 
-        <p className="text-[10px] text-gray-400 text-center mt-2">
-          Pinned preview only. Full clickable schedule is below.
+              {visibleAssignments.length === 0 ? (
+                <div className="mt-2 rounded-lg bg-church-lightblue p-2.5 text-xs text-gray-500">
+                  No assignments added yet for this Sunday.
+                </div>
+              ) : (
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-1.5">
+                  {visibleAssignments.map(assignment => (
+                    <div
+                      key={assignment.id || `${assignment.position}-${assignment.person_name}`}
+                      className="rounded-lg border border-church-border bg-white px-2.5 py-1.5 shadow-sm"
+                    >
+                      <div className="grid grid-cols-[5.8rem_1fr] gap-2 items-start">
+                        <p className="text-[10px] font-bold text-primary leading-snug break-words">
+                          {assignment.position}
+                        </p>
+
+                        <p className="text-[11px] font-extrabold text-church-navy leading-snug break-words">
+                          {assignment.person_name}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="border-t border-church-border pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-bold text-primary uppercase tracking-wide">
+              Songs to be Sung
+            </p>
+
+            {!loadingLineup && lineup && (
+              <span className="text-[10px] text-gray-500 bg-primary-light px-2 py-0.5 rounded-full">
+                {totalSongs} {totalSongs === 1 ? 'song' : 'songs'}
+              </span>
+            )}
+          </div>
+
+          {loadingLineup ? (
+            <div className="mt-2 animate-pulse space-y-2">
+              <div className="h-3 bg-primary-light rounded w-4/5" />
+              <div className="h-3 bg-primary-light rounded w-3/5" />
+              <div className="h-3 bg-primary-light rounded w-2/3" />
+            </div>
+          ) : !lineup ? (
+            <div className="mt-2 rounded-lg bg-church-lightblue p-2.5 text-xs text-gray-500">
+              No song lineup found yet.
+            </div>
+          ) : (
+            <div className="mt-2 flex flex-col gap-2">
+              <div className="rounded-lg bg-primary-light px-2.5 py-2">
+                <p className="text-[10px] font-bold text-primary uppercase tracking-wide">
+                  {lineup.title}
+                </p>
+
+                <p className="text-[11px] text-church-navy font-semibold">
+                  Song Leader: {lineup.song_leader || '—'}
+                </p>
+              </div>
+
+              {lineupSections.map(section => (
+                <div
+                  key={section.id || section.section_name}
+                  className="rounded-lg border border-church-border bg-white px-2.5 py-2 shadow-sm"
+                >
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-wide mb-1">
+                    {section.section_name}
+                  </p>
+
+                  {section.songs.length === 0 ? (
+                    <p className="text-[11px] text-gray-400">
+                      No songs added.
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-1">
+                      {section.songs.map((song, index) => (
+                        <div
+                          key={song.id || `${section.section_name}-${index}`}
+                          className="grid grid-cols-[1.2rem_1fr_auto] gap-1.5 items-start"
+                        >
+                          <p className="text-[10px] text-gray-400 font-bold">
+                            {index + 1}.
+                          </p>
+
+                          <p className="text-[11px] font-extrabold text-church-navy leading-snug break-words">
+                            {song.title || 'Untitled Song'}
+                          </p>
+
+                          <p className="text-[10px] text-primary font-bold whitespace-nowrap">
+                            {song.key_override || song.current_key || song.original_key || '—'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <p className="text-[10px] text-gray-400 text-center">
+          Pinned preview only. Full clickable schedule and lineup are below.
         </p>
       </div>
     </div>
@@ -624,6 +680,8 @@ export default function Home() {
               schedule={upcomingSchedule}
               dateItem={upcomingScheduleDate}
               loading={loadingSchedule}
+              lineup={featuredLineup}
+              loadingLineup={loadingLineup}
             />
           </div>
         </div>
