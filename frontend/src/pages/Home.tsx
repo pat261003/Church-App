@@ -640,11 +640,11 @@ export default function Home() {
   }, [lastSundayDate, currentSundayDate]);
 
   return (
-  <div className="w-full flex flex-col items-center gap-6 sm:gap-8 py-4 sm:py-6 overflow-x-hidden">
-     <div className="relative left-1/2 w-[calc(100vw-1rem)] -translate-x-1/2 px-2 sm:w-[calc(100vw-2rem)] sm:px-0 grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
+  <div className="w-full flex flex-col items-center gap-6 sm:gap-8 py-4 sm:py-6 px-3 sm:px-5 lg:px-8 overflow-x-hidden">
+     <div className="w-full grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
       <section className="relative w-full overflow-hidden rounded-3xl border border-church-border shadow-xl min-h-[360px] sm:min-h-[430px] xl:min-h-[620px] flex items-end">
         <div
-          className="absolute inset-0 bg-cover bg-center"
+          className="absolute inset-0 bg-cover bg-center xl:bg-center"
           style={{
             backgroundImage: `url(${CHURCH_BACKGROUND_IMAGE})`,
           }}
