@@ -402,7 +402,7 @@ function PinnedUpcomingScheduleCard({
                   No assignments added yet for this Sunday.
                 </div>
               ) : (
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-1.5">
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {visibleAssignments.map(assignment => (
                     <div
                       key={assignment.id || `${assignment.position}-${assignment.person_name}`}
