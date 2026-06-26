@@ -315,21 +315,22 @@ function PinnedUpcomingScheduleCard({
 }) {
   if (loading) {
     return (
-      <div className="w-full lg:w-[380px] rounded-3xl border border-white/30 bg-white/95 text-church-navy shadow-2xl backdrop-blur-md overflow-hidden">
-        <div className="bg-primary px-4 py-3 text-white">
-          <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/80">
+      <div className="w-full lg:w-[360px] rounded-2xl border border-white/30 bg-white/95 text-church-navy shadow-2xl backdrop-blur-md overflow-hidden">
+        <div className="bg-primary px-4 py-2.5 text-white">
+          <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-white/80">
             Pinned Schedule
           </p>
-          <h2 className="font-extrabold text-lg">
+
+          <h2 className="font-extrabold text-base">
             Loading Sunday assignments...
           </h2>
         </div>
 
-        <div className="p-4">
+        <div className="p-3">
           <div className="animate-pulse space-y-2">
-            <div className="h-4 bg-primary-light rounded w-3/4" />
-            <div className="h-4 bg-primary-light rounded w-1/2" />
-            <div className="h-4 bg-primary-light rounded w-2/3" />
+            <div className="h-3 bg-primary-light rounded w-3/4" />
+            <div className="h-3 bg-primary-light rounded w-1/2" />
+            <div className="h-3 bg-primary-light rounded w-2/3" />
           </div>
         </div>
       </div>
@@ -338,17 +339,18 @@ function PinnedUpcomingScheduleCard({
 
   if (!schedule || !dateItem) {
     return (
-      <div className="w-full lg:w-[380px] rounded-3xl border border-white/30 bg-white/95 text-church-navy shadow-2xl backdrop-blur-md overflow-hidden">
-        <div className="bg-primary px-4 py-3 text-white">
-          <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/80">
+      <div className="w-full lg:w-[360px] rounded-2xl border border-white/30 bg-white/95 text-church-navy shadow-2xl backdrop-blur-md overflow-hidden">
+        <div className="bg-primary px-4 py-2.5 text-white">
+          <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-white/80">
             Pinned Schedule
           </p>
-          <h2 className="font-extrabold text-lg">
+
+          <h2 className="font-extrabold text-base">
             Upcoming Sunday
           </h2>
         </div>
 
-        <div className="p-4">
+        <div className="p-3">
           <p className="text-sm font-semibold text-church-navy">
             No schedule found yet.
           </p>
@@ -356,13 +358,6 @@ function PinnedUpcomingScheduleCard({
           <p className="text-xs text-gray-500 mt-1">
             Create or update the schedule so assignments can appear here.
           </p>
-
-          <Link
-            to="/schedules"
-            className="btn-secondary text-xs mt-4 w-full text-center block"
-          >
-            Open Schedule
-          </Link>
         </div>
       </div>
     );
@@ -372,88 +367,78 @@ function PinnedUpcomingScheduleCard({
     assignment => assignment.person_name?.trim()
   );
 
-  const pinnedAssignments = visibleAssignments.slice(0, 7);
-  const hiddenCount = Math.max(visibleAssignments.length - pinnedAssignments.length, 0);
-
   return (
-    <div className="w-full lg:w-[380px] rounded-3xl border border-white/30 bg-white/95 text-church-navy shadow-2xl backdrop-blur-md overflow-hidden">
-      <div className="bg-primary px-4 py-3 text-white">
+    <div className="w-full lg:w-[360px] rounded-2xl border border-white/30 bg-white/95 text-church-navy shadow-2xl backdrop-blur-md overflow-hidden">
+      <div className="bg-primary px-4 py-2.5 text-white">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/80">
+            <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-white/80">
               Pinned Schedule
             </p>
 
-            <h2 className="font-extrabold text-lg leading-tight">
+            <h2 className="font-extrabold text-base leading-tight">
               Upcoming Sunday
             </h2>
           </div>
 
-          <div className="rounded-full bg-white/15 px-3 py-1 text-center shrink-0">
-            <p className="text-[10px] text-white/75">Assigned</p>
-            <p className="text-lg font-extrabold leading-none">
+          <div className="rounded-full bg-white/15 px-2.5 py-1 text-center shrink-0">
+            <p className="text-[9px] text-white/75">Assigned</p>
+            <p className="text-base font-extrabold leading-none">
               {visibleAssignments.length}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="p-4">
-        <p className="text-xs font-bold text-primary uppercase tracking-wide">
+      <div className="p-3">
+        <p className="text-[10px] font-bold text-primary uppercase tracking-wide">
           {formatDate(dateItem.service_date)}
         </p>
 
-        <p className="text-sm font-bold text-church-navy mt-1 break-words">
+        <p className="text-xs font-bold text-church-navy mt-0.5 break-words">
           {schedule.title}
         </p>
 
         {dateItem.activity && (
-          <div className="mt-3 rounded-xl bg-primary-light px-3 py-2">
-            <p className="text-[10px] font-bold text-primary uppercase tracking-wide">
+          <div className="mt-2 rounded-lg bg-primary-light px-2.5 py-2">
+            <p className="text-[9px] font-bold text-primary uppercase tracking-wide">
               Activity / Notes
             </p>
 
-            <p className="text-xs font-semibold text-church-navy whitespace-pre-wrap">
+            <p className="text-[11px] font-semibold text-church-navy whitespace-pre-wrap leading-snug">
               {dateItem.activity}
             </p>
           </div>
         )}
 
-        {pinnedAssignments.length === 0 ? (
-          <div className="mt-4 rounded-xl bg-church-lightblue p-3 text-sm text-gray-500">
+        {visibleAssignments.length === 0 ? (
+          <div className="mt-3 rounded-lg bg-church-lightblue p-2.5 text-xs text-gray-500">
             No assignments added yet for this Sunday.
           </div>
         ) : (
-          <div className="mt-4 flex flex-col gap-2 max-h-[260px] overflow-y-auto pr-1">
-            {pinnedAssignments.map(assignment => (
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-1.5">
+            {visibleAssignments.map(assignment => (
               <div
                 key={assignment.id || `${assignment.position}-${assignment.person_name}`}
-                className="rounded-xl border border-church-border bg-white px-3 py-2 shadow-sm"
+                className="rounded-lg border border-church-border bg-white px-2.5 py-1.5 shadow-sm"
               >
-                <p className="text-[10px] font-bold text-primary uppercase tracking-wide break-words">
-                  {assignment.position}
-                </p>
+                <div className="grid grid-cols-[5.8rem_1fr] gap-2 items-start">
+                  <p className="text-[10px] font-bold text-primary leading-snug break-words">
+                    {assignment.position}
+                  </p>
 
-                <p className="text-sm font-extrabold text-church-navy leading-tight break-words">
-                  {assignment.person_name}
-                </p>
+                  <p className="text-[11px] font-extrabold text-church-navy leading-snug break-words">
+                    {assignment.person_name}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
         )}
 
-        {hiddenCount > 0 && (
-          <p className="text-[11px] text-gray-500 mt-2 text-center">
-            +{hiddenCount} more assignment{hiddenCount === 1 ? '' : 's'} in full schedule
-          </p>
-        )}
-
-        <Link
-          to={`/schedules/${schedule.id}`}
-          className="btn-primary text-xs mt-4 w-full text-center block"
-        >
-          Open Full Schedule
-        </Link>
+        <p className="text-[10px] text-gray-400 text-center mt-2">
+          Pinned preview only. Full clickable schedule is below.
+        </p>
       </div>
     </div>
   );
