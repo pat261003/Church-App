@@ -633,19 +633,19 @@ export default function Home() {
 
   return (
     <div className="flex flex-col items-center gap-6 sm:gap-8 py-4 sm:py-6">
-      <section className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-church-border shadow-xl min-h-[420px] sm:min-h-[470px]">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: `url(${CHURCH_BACKGROUND_IMAGE})`,
-          }}
-        />
+      <div className="w-full max-w-6xl grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_390px] gap-4 items-start">
+        <section className="relative w-full overflow-hidden rounded-3xl border border-church-border shadow-xl min-h-[360px] sm:min-h-[430px] flex items-end">
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${CHURCH_BACKGROUND_IMAGE})`,
+            }}
+          />
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/50 to-black/25" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/20" />
 
-        <div className="relative z-10 w-full p-5 sm:p-8 md:p-10 text-white">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-2xl lg:pt-8">
+          <div className="relative z-10 w-full p-5 sm:p-8 md:p-10 text-white">
+            <div className="max-w-3xl">
               <img
                 src="/logo.jpg"
                 alt="FGFTI"
@@ -675,17 +675,19 @@ export default function Home() {
                 </a>
               </div>
             </div>
-
-            <PinnedUpcomingScheduleCard
-              schedule={upcomingSchedule}
-              dateItem={upcomingScheduleDate}
-              loading={loadingSchedule}
-              lineup={featuredLineup}
-              loadingLineup={loadingLineup}
-            />
           </div>
-        </div>
-      </section>
+        </section>
+
+  <div className="w-full xl:sticky xl:top-4">
+    <PinnedUpcomingScheduleCard
+      schedule={upcomingSchedule}
+      dateItem={upcomingScheduleDate}
+      loading={loadingSchedule}
+      lineup={featuredLineup}
+      loadingLineup={loadingLineup}
+    />
+  </div>
+</div>
 
       <HomeAccordionSection
         title="Attendance Summary"
