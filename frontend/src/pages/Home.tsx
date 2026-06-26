@@ -350,7 +350,7 @@ function PinnedUpcomingScheduleCard({
         </div>
       </div>
 
-      <div className="p-3 sm:p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Schedule side */}
         <div className="rounded-2xl border border-church-border bg-white p-3">
           <div className="flex items-center justify-between gap-2 mb-2">
@@ -402,21 +402,19 @@ function PinnedUpcomingScheduleCard({
                   No assignments added yet for this Sunday.
                 </div>
               ) : (
-                <div className="mt-2 flex flex-col gap-1.5">
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2 gap-1.5">
                   {visibleAssignments.map(assignment => (
                     <div
                       key={assignment.id || `${assignment.position}-${assignment.person_name}`}
-                      className="rounded-lg border border-church-border bg-[rgb(var(--color-surface))] px-2.5 py-1.5"
+                      className="rounded-lg border border-church-border bg-[rgb(var(--color-surface))] px-2 py-1.5"
                     >
-                      <div className="grid grid-cols-[5.7rem_1fr] gap-2 items-start">
-                        <p className="text-[10px] font-bold text-primary leading-snug break-words">
-                          {assignment.position}
-                        </p>
+                      <p className="text-[9px] font-bold text-primary uppercase tracking-wide leading-snug break-words">
+                        {assignment.position}
+                      </p>
 
-                        <p className="text-[11px] font-extrabold text-church-navy leading-snug break-words">
-                          {assignment.person_name}
-                        </p>
-                      </div>
+                      <p className="text-[11px] font-extrabold text-church-navy leading-snug break-words mt-0.5">
+                        {assignment.person_name}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -502,7 +500,7 @@ function PinnedUpcomingScheduleCard({
           )}
         </div>
 
-        <p className="md:col-span-2 text-[10px] text-gray-400 text-center">
+        <p className="lg:col-span-2 text-[10px] text-gray-400 text-center">
           Pinned preview only. Full clickable schedule and lineup are below.
         </p>
       </div>
@@ -643,8 +641,8 @@ export default function Home() {
 
   return (
     <div className="flex flex-col items-center gap-6 sm:gap-8 py-4 sm:py-6">
-      <div className="w-full max-w-[1500px] px-3 sm:px-5 grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
-        <section className="relative w-full overflow-hidden rounded-3xl border border-church-border shadow-xl min-h-[360px] sm:min-h-[430px] xl:min-h-[560px] flex items-end">
+      <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen px-3 sm:px-5 lg:px-8 grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
+        <section className="relative w-full overflow-hidden rounded-3xl border border-church-border shadow-xl min-h-[360px] sm:min-h-[430px] xl:min-h-[620px] flex items-end">
           <div
             className="absolute inset-0 bg-cover bg-center"
             style={{
@@ -688,16 +686,16 @@ export default function Home() {
           </div>
         </section>
 
-      <div className="w-full h-full">
-        <PinnedUpcomingScheduleCard
-          schedule={upcomingSchedule}
-          dateItem={upcomingScheduleDate}
-          loading={loadingSchedule}
-          lineup={featuredLineup}
-          loadingLineup={loadingLineup}
-        />
+        <div className="w-full h-full">
+          <PinnedUpcomingScheduleCard
+            schedule={upcomingSchedule}
+            dateItem={upcomingScheduleDate}
+            loading={loadingSchedule}
+            lineup={featuredLineup}
+            loadingLineup={loadingLineup}
+          />
+        </div>
       </div>
-    </div>
 
       <HomeAccordionSection
         title="Attendance Summary"
