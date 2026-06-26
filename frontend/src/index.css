@@ -5,7 +5,7 @@
 @tailwind utilities;
 
 :root {
-  /* Original theme */
+  /* Original theme 
   --color-primary: 91 127 166;
   --color-primary-dark: 61 92 125;
   --color-primary-light: 234 240 247;
@@ -17,6 +17,7 @@
 
   --color-card: 255 255 255;
   --color-surface: 255 255 255;
+  */
 }
 
 html[data-theme='rose'] {
