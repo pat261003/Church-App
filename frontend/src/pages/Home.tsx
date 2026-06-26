@@ -402,7 +402,7 @@ function PinnedUpcomingScheduleCard({
                   No assignments added yet for this Sunday.
                 </div>
               ) : (
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2 gap-1.5">
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {visibleAssignments.map(assignment => (
                     <div
                       key={assignment.id || `${assignment.position}-${assignment.person_name}`}
@@ -640,8 +640,8 @@ export default function Home() {
   }, [lastSundayDate, currentSundayDate]);
 
   return (
-    <div className="flex flex-col items-center gap-6 sm:gap-8 py-4 sm:py-6">
-      <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen px-3 sm:px-5 lg:px-8 grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
+  <div className="w-full flex flex-col items-center gap-6 sm:gap-8 py-4 sm:py-6 px-3 sm:px-5 lg:px-8">
+      <div className="w-full grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
         <section className="relative w-full overflow-hidden rounded-3xl border border-church-border shadow-xl min-h-[360px] sm:min-h-[430px] xl:min-h-[620px] flex items-end">
           <div
             className="absolute inset-0 bg-cover bg-center"
@@ -686,16 +686,16 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="w-full h-full">
-          <PinnedUpcomingScheduleCard
-            schedule={upcomingSchedule}
-            dateItem={upcomingScheduleDate}
-            loading={loadingSchedule}
-            lineup={featuredLineup}
-            loadingLineup={loadingLineup}
-          />
-        </div>
+      <div className="w-full h-full">
+        <PinnedUpcomingScheduleCard
+          schedule={upcomingSchedule}
+          dateItem={upcomingScheduleDate}
+          loading={loadingSchedule}
+          lineup={featuredLineup}
+          loadingLineup={loadingLineup}
+        />
       </div>
+    </div>
 
       <HomeAccordionSection
         title="Attendance Summary"
