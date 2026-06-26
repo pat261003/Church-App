@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import PaletteToggle from './PaletteToggle';
+/*import PaletteToggle from './PaletteToggle';*/
 
 type IconName = 'home' | 'attendance' | 'dashboard' | 'songs' | 'lineup' | 'schedule' |'wheel';
 
@@ -168,12 +168,12 @@ export default function Navbar() {
               ))}
             </div>
 
-            <PaletteToggle />
+           {/* <PaletteToggle /> */}
           </div>
 
           {/* Mobile palette toggle + hamburger */}
           <div className="md:hidden flex items-center gap-2">
-            <PaletteToggle />
+           {/* <PaletteToggle /> */}
 
             <button
               className="text-white p-2 rounded-lg hover:bg-primary-dark transition-colors"
