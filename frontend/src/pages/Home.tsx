@@ -476,13 +476,6 @@ export default function Home() {
               >
                 Visit Church Facebook Page
               </a>
-
-              <Link
-                to="/attendance"
-                className="inline-flex items-center justify-center rounded-xl border border-white/60 bg-white/10 text-white font-bold px-5 py-3 backdrop-blur hover:bg-white/20 active:scale-95 transition-all"
-              >
-                Open Attendance
-              </Link>
             </div>
           </div>
         </div>
