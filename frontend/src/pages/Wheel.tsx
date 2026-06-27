@@ -23,6 +23,71 @@ type WheelData = {
   results: WheelResult[];
 };
 
+type FullscreenTarget = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void;
+  msRequestFullscreen?: () => void;
+};
+
+type FullscreenDocument = Document & {
+  webkitFullscreenElement?: Element | null;
+  msFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => Promise<void> | void;
+  msExitFullscreen?: () => void;
+};
+
+function getFullscreenElement() {
+  const doc = document as FullscreenDocument;
+
+  return (
+    document.fullscreenElement ||
+    doc.webkitFullscreenElement ||
+    doc.msFullscreenElement ||
+    null
+  );
+}
+
+async function requestPageFullscreen(element: HTMLElement) {
+  const target = element as FullscreenTarget;
+
+  if (target.requestFullscreen) {
+    await target.requestFullscreen();
+    return;
+  }
+
+  if (target.webkitRequestFullscreen) {
+    await target.webkitRequestFullscreen();
+    return;
+  }
+
+  if (target.msRequestFullscreen) {
+    target.msRequestFullscreen();
+    return;
+  }
+
+  throw new Error('Fullscreen is not supported');
+}
+
+async function exitPageFullscreen() {
+  const doc = document as FullscreenDocument;
+
+  if (document.exitFullscreen) {
+    await document.exitFullscreen();
+    return;
+  }
+
+  if (doc.webkitExitFullscreen) {
+    await doc.webkitExitFullscreen();
+    return;
+  }
+
+  if (doc.msExitFullscreen) {
+    doc.msExitFullscreen();
+    return;
+  }
+
+  throw new Error('Fullscreen is not supported');
+}
+
 const WHEEL_COLORS = [
   '#0B1957',
   '#FA9EBC',
@@ -248,6 +313,8 @@ function getInitialWheels(): WheelData[] {
 
 export default function Wheel() {
   const [wheels, setWheels] = useState<WheelData[]>(() => getInitialWheels());
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const wheelPageRef = useRef<HTMLDivElement | null>(null);
   const timeoutRefs = useRef<Record<string, number>>({});
   const previewTimeoutRefs = useRef<Record<string, number>>({});
   const previewIntervalRefs = useRef<Record<string, number>>({});
@@ -277,6 +344,37 @@ export default function Wheel() {
       });
     };
   }, []);
+
+  useEffect(() => {
+    function handleFullscreenChange() {
+      setIsFullscreen(Boolean(getFullscreenElement()));
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
+
+  async function toggleFullscreen() {
+    try {
+      if (getFullscreenElement()) {
+        await exitPageFullscreen();
+        return;
+      }
+
+      if (!wheelPageRef.current) return;
+
+      await requestPageFullscreen(wheelPageRef.current);
+    } catch {
+      toast.error('Fullscreen is not supported on this browser');
+    }
+  }
 
   function updateWheel(wheelId: string, updater: Partial<WheelData> | ((wheel: WheelData) => WheelData)) {
     setWheels(prev =>
@@ -506,7 +604,14 @@ export default function Wheel() {
   }
 
   return (
-    <div className="w-full min-h-[calc(100vh-5rem)] flex flex-col gap-6 px-3 sm:px-5 lg:px-8 py-4 sm:py-6 overflow-x-hidden">
+    <div
+      ref={wheelPageRef}
+      className={`w-full flex flex-col gap-6 px-3 sm:px-5 lg:px-8 py-4 sm:py-6 overflow-x-hidden bg-church-lightblue ${
+        isFullscreen
+          ? 'min-h-screen h-screen overflow-y-auto'
+          : 'min-h-[calc(100vh-5rem)]'
+      }`}
+    >
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-church-navy">
@@ -518,13 +623,23 @@ export default function Wheel() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={addWheel}
-          className="btn-primary text-sm"
-        >
-          + Add Wheel
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="btn-secondary text-sm"
+          >
+            {isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
+          </button>
+
+          <button
+            type="button"
+            onClick={addWheel}
+            className="btn-primary text-sm"
+          >
+            + Add Wheel
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-6">
