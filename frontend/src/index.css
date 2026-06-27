@@ -155,50 +155,44 @@ html {
 }
 
 /*
-  Word + chord layout:
-  The chord stays above the word.
-  If the word does not fit the screen, the whole word moves to the next line.
-  The word will not split like "somethi" + "ng".
+  Accurate wrapped chord sheet layout:
+  - Keeps chord timing based on original spacing.
+  - Does not scroll sideways.
+  - Wraps the chord line and lyric line together.
 */
-.chord-word-wrap-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  column-gap: 0.75rem;
-  row-gap: 0.45rem;
-  padding: 0.2rem 0 0.75rem;
-  max-width: 100%;
-}
-
-.chord-word-unit {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  flex: 0 0 auto;
-  max-width: 100%;
-  white-space: nowrap;
-}
-
-.chord-word-chord {
+.accurate-wrapped-pair {
   display: block;
-  min-height: 1.15rem;
-  font-size: 0.95em;
-  line-height: 1.1;
-  font-weight: 900;
-  color: rgb(var(--color-primary));
-  white-space: nowrap;
+  max-width: 100%;
+  margin-bottom: 0.85rem;
 }
 
-.chord-word-lyric {
+.accurate-wrapped-chunk {
   display: block;
-  line-height: 1.4;
-  color: rgb(var(--color-church-navy));
-  white-space: nowrap;
-  word-break: keep-all;
+  max-width: 100%;
+  padding: 0.15rem 0 0.45rem;
+}
+
+.accurate-chord-line,
+.accurate-lyric-line {
+  white-space: pre;
+  word-break: normal;
   overflow-wrap: normal;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-/* Chord-only lines like Intro */
+.accurate-chord-line {
+  color: rgb(var(--color-primary));
+  font-weight: 900;
+  line-height: 1.25;
+  min-height: 1.1rem;
+}
+
+.accurate-lyric-line {
+  color: rgb(var(--color-church-navy));
+  line-height: 1.55;
+}
+
+/* Chord-only lines like Intro or Prelude */
 .chord-only-line {
   display: flex;
   flex-wrap: wrap;
@@ -206,13 +200,13 @@ html {
   white-space: normal;
   word-break: keep-all;
   overflow-wrap: normal;
-  padding: 0.2rem 0 0.55rem;
+  padding: 0.25rem 0 0.55rem;
   margin-bottom: 0.45rem;
 }
 
 .chord-only-line .chord-name {
   color: rgb(var(--color-primary));
-  font-weight: 800;
+  font-weight: 900;
 }
 
 /* Lines without chords */
@@ -221,25 +215,26 @@ html {
   white-space: normal;
   word-break: keep-all;
   overflow-wrap: normal;
-  line-height: 1.45;
+  line-height: 1.55;
   padding-bottom: 0.35rem;
 }
 
 /* General chord text */
 .chord-name {
   color: rgb(var(--color-primary));
-  font-weight: 800;
+  font-weight: 900;
 }
 
-/* Keep old class names from breaking if some page still uses them */
+/*
+  Old fallback classes.
+  These are only here so older pages do not completely break.
+  Correct alignment requires SongDetail.tsx and LineupDetail.tsx
+  to use accurate-wrapped-pair / accurate-chord-line / accurate-lyric-line.
+*/
 .chord-lyric-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  column-gap: 0.75rem;
-  row-gap: 0.45rem;
-  padding: 0.2rem 0 0.75rem;
+  display: block;
   max-width: 100%;
+  margin-bottom: 0.85rem;
 }
 
 .chord-segment {
@@ -247,11 +242,12 @@ html {
   flex-direction: column;
   align-items: flex-start;
   white-space: nowrap;
+  margin-right: 0.75rem;
 }
 
 .lyric-text {
   color: rgb(var(--color-church-navy));
-  line-height: 1.4;
+  line-height: 1.45;
   white-space: nowrap;
   word-break: keep-all;
   overflow-wrap: normal;
@@ -262,14 +258,16 @@ html {
     font-size: 13px;
   }
 
-  .chord-word-wrap-line,
-  .chord-lyric-line {
-    column-gap: 0.55rem;
-    row-gap: 0.4rem;
+  .accurate-wrapped-pair {
+    margin-bottom: 0.95rem;
   }
 
-  .chord-word-chord {
-    font-size: 0.9em;
+  .accurate-chord-line {
+    font-size: 1em;
+  }
+
+  .accurate-lyric-line {
+    font-size: 1em;
   }
 }
 
