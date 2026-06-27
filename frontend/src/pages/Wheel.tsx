@@ -1104,23 +1104,23 @@ export default function Wheel() {
                             <p className="text-sm">No results yet.</p>
                           </div>
                         ) : (
-                          <div className="flex flex-col gap-2 max-h-[520px] xl:max-h-[680px] overflow-y-auto pr-1">
+                          <div className="flex flex-col gap-1.5 max-h-[520px] xl:max-h-[680px] overflow-y-auto pr-1">
                             {rankedResults.map((result, index) => (
                               <div
                                 key={result.id}
-                                className="rounded-xl border border-church-border bg-[rgb(var(--color-surface))] p-3"
+                                className="rounded-lg border border-church-border bg-[rgb(var(--color-surface))] px-2.5 py-2"
                               >
-                                <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-start justify-between gap-1.5">
                                   <div className="min-w-0">
-                                    <p className="text-[11px] font-bold text-primary uppercase tracking-wide">
+                                    <p className="text-[10px] font-bold text-primary uppercase tracking-wide leading-tight">
                                       Rank #{index + 1}
                                     </p>
 
-                                    <p className="font-bold text-church-navy break-words">
+                                    <p className="text-sm font-bold text-church-navy break-words leading-tight">
                                       {result.value}
                                     </p>
 
-                                    <p className="text-[11px] text-gray-400 mt-1">
+                                    <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">
                                       {result.source} · {formatDateTime(result.created_at)}
                                     </p>
                                   </div>
@@ -1128,7 +1128,7 @@ export default function Wheel() {
                                   <button
                                     type="button"
                                     onClick={() => removeResult(wheel.id, result.id)}
-                                    className="text-xs text-red-500 hover:underline shrink-0"
+                                    className="text-[10px] text-red-500 hover:underline shrink-0"
                                   >
                                     Remove
                                   </button>
