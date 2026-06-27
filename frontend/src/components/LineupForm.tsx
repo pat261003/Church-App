@@ -353,7 +353,7 @@ export default function LineupForm({
         </div>
       </div>
 
-      <div className="card flex flex-col gap-4">
+      <div className="card flex flex-col gap-4 song-lineup-bordered-fields">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 className="font-semibold text-primary">Song Lineup</h2>

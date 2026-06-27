@@ -93,11 +93,11 @@ html {
   }
 
   .input-field {
-    @apply w-full border border-church-border rounded-lg px-3 py-2
-           focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
-           text-church-navy placeholder-gray-400;
-    background-color: rgb(var(--color-surface));
-  }
+  @apply w-full border-0 rounded-lg px-3 py-2
+         focus:outline-none focus:ring-2 focus:ring-primary
+         text-church-navy placeholder-gray-400;
+  background-color: rgb(var(--color-surface));
+}
 
   .input-field-2 {
   @apply w-full border rounded-lg px-3 py-2
@@ -282,4 +282,19 @@ html {
     size: A4 portrait;
     margin: 12mm;
   }
+}
+
+.song-lineup-bordered-fields input:not([type='checkbox']):not([type='radio']),
+.song-lineup-bordered-fields textarea,
+.song-lineup-bordered-fields select {
+  border: 1px solid rgb(203 213 225) !important;
+  background-color: rgb(var(--color-surface));
+}
+
+.song-lineup-bordered-fields input:focus,
+.song-lineup-bordered-fields textarea:focus,
+.song-lineup-bordered-fields select:focus {
+  border-color: rgb(var(--color-primary)) !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(var(--color-primary) / 0.25);
 }
