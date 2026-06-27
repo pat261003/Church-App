@@ -31,13 +31,12 @@
   --color-church-navy: 11 25 87;          /* #0B1957 */
   --color-church-blue: 250 158 188;       /* #FA9EBC */
   --color-church-lightblue: 248 243 234;  /* #F8F3EA */
-  --color-church-border: 255 255 255;    
-  --color-church-border-2: 250 158 188; 
+  --color-church-border: 255 255 255;
+  --color-church-border-2: 250 158 188;
 
   --color-card: 255 219 209;              /* #FFDBD1 */
   --color-surface: 248 243 234;           /* #F8F3EA */
 }
-
 
 html[data-theme='rose'] {
   --color-primary: 11 25 87;
@@ -48,7 +47,7 @@ html[data-theme='rose'] {
   --color-church-blue: 250 158 188;
   --color-church-lightblue: 248 243 234;
   --color-church-border: 255 255 255;
-  --color-church-border-2: 250 158 188; 
+  --color-church-border-2: 250 158 188;
 
   --color-card: 255 219 209;
   --color-surface: 248 243 234;
@@ -71,21 +70,22 @@ html {
   }
 
   .btn-secondary {
-  @apply text-primary border border-church-border font-semibold px-4 py-2 rounded-lg
-         transition-colors duration-200;
-  background-color: rgb(var(--color-surface));
-}
+    @apply text-primary border font-semibold px-4 py-2 rounded-lg
+           transition-colors duration-200;
+    background-color: rgb(var(--color-surface));
+    border-color: rgb(203 213 225) !important;
+  }
 
-.btn-secondary:hover {
-  background-color: rgb(var(--color-primary));
-  color: #ffffff;
-  border-color: rgb(var(--color-primary));
-}
+  .btn-secondary:hover {
+    background-color: rgb(var(--color-primary));
+    color: #ffffff;
+    border-color: rgb(var(--color-primary)) !important;
+  }
 
-.btn-secondary:hover svg {
-  color: #ffffff;
-  stroke: #ffffff;
-}
+  .btn-secondary:hover svg {
+    color: #ffffff;
+    stroke: #ffffff;
+  }
 
   .btn-danger {
     @apply bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2
@@ -93,19 +93,19 @@ html {
   }
 
   .input-field {
-  @apply w-full border-0 rounded-lg px-3 py-2
-         focus:outline-none focus:ring-2 focus:ring-primary
-         text-church-navy placeholder-gray-400;
-  background-color: rgb(var(--color-surface));
-}
+    @apply w-full border-0 rounded-lg px-3 py-2
+           focus:outline-none focus:ring-2 focus:ring-primary
+           text-church-navy placeholder-gray-400;
+    background-color: rgb(var(--color-surface));
+  }
 
   .input-field-2 {
-  @apply w-full border rounded-lg px-3 py-2
-         focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
-         text-church-navy placeholder-gray-400;
-  background-color: rgb(var(--color-surface));
-  border-color: rgb(var(--color-church-border-2));
-}
+    @apply w-full border rounded-lg px-3 py-2
+           focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
+           text-church-navy placeholder-gray-400;
+    background-color: rgb(var(--color-surface));
+    border-color: rgb(var(--color-church-border-2));
+  }
 
   .card {
     @apply rounded-xl shadow-sm border border-church-border p-4 md:p-6;
@@ -116,23 +116,24 @@ html {
     @apply inline-block bg-primary text-white text-xs font-bold px-2 py-1 rounded uppercase tracking-wider;
   }
 
- .btn-edit-small {
-  @apply inline-flex items-center justify-center gap-1.5 rounded-full border border-church-border
-         px-3 py-1.5 text-xs font-bold text-primary transition-all duration-200
-         hover:shadow-sm active:scale-95;
-  background-color: rgb(var(--color-surface));
-}
+  .btn-edit-small {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-full border
+           px-3 py-1.5 text-xs font-bold text-primary transition-all duration-200
+           hover:shadow-sm active:scale-95;
+    background-color: rgb(var(--color-surface));
+    border-color: rgb(203 213 225) !important;
+  }
 
-.btn-edit-small:hover {
-  background-color: rgb(var(--color-primary));
-  color: #ffffff;
-  border-color: rgb(var(--color-primary));
-}
+  .btn-edit-small:hover {
+    background-color: rgb(var(--color-primary));
+    color: #ffffff;
+    border-color: rgb(var(--color-primary)) !important;
+  }
 
-.btn-edit-small:hover svg {
-  color: #ffffff;
-  stroke: #ffffff;
-}
+  .btn-edit-small:hover svg {
+    color: #ffffff;
+    stroke: #ffffff;
+  }
 
   .btn-delete-small {
     @apply inline-flex items-center justify-center gap-1.5 rounded-full border border-red-200
@@ -148,67 +149,112 @@ html {
   overflow-x: hidden;
 }
 
-.song-line {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-@supports (white-space: break-spaces) {
-  .song-line {
-    white-space: break-spaces;
-  }
-}
-
 .chord-lyrics-box {
   max-width: 100%;
   overflow-x: hidden;
 }
 
+/*
+  Word + chord layout:
+  The chord stays above the word.
+  If the word does not fit the screen, the whole word moves to the next line.
+  The word will not split like "somethi" + "ng".
+*/
+.chord-word-wrap-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  column-gap: 0.75rem;
+  row-gap: 0.45rem;
+  padding: 0.2rem 0 0.75rem;
+  max-width: 100%;
+}
+
+.chord-word-unit {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 0 0 auto;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.chord-word-chord {
+  display: block;
+  min-height: 1rem;
+  font-size: 0.72em;
+  line-height: 1;
+  font-weight: 800;
+  color: rgb(var(--color-primary));
+  white-space: nowrap;
+}
+
+.chord-word-lyric {
+  display: block;
+  line-height: 1.4;
+  color: rgb(var(--color-church-navy));
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+/* Chord-only lines like Intro */
+.chord-only-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.1rem;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  padding: 0.2rem 0 0.55rem;
+  margin-bottom: 0.45rem;
+}
+
+.chord-only-line .chord-name {
+  color: rgb(var(--color-primary));
+  font-weight: 800;
+}
+
+/* Lines without chords */
+.lyric-only-line {
+  color: rgb(var(--color-church-navy));
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  line-height: 1.45;
+  padding-bottom: 0.35rem;
+}
+
+/* General chord text */
+.chord-name {
+  color: rgb(var(--color-primary));
+  font-weight: 800;
+}
+
+/* Keep old class names from breaking if some page still uses them */
 .chord-lyric-line {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  row-gap: 0.15rem;
-  margin-bottom: 0.65rem;
+  column-gap: 0.75rem;
+  row-gap: 0.45rem;
+  padding: 0.2rem 0 0.75rem;
+  max-width: 100%;
 }
 
 .chord-segment {
   display: inline-flex;
   flex-direction: column;
-  min-width: 0;
-  white-space: pre-wrap;
-}
-
-.chord-name {
-  color: rgb(var(--color-primary));
-  font-weight: 700;
-  line-height: 1.1;
-  min-height: 1rem;
+  align-items: flex-start;
+  white-space: nowrap;
 }
 
 .lyric-text {
   color: rgb(var(--color-church-navy));
-  line-height: 1.7;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-  word-break: break-word;
-}
-
-.lyric-only-line {
-  color: rgb(var(--color-church-navy));
-  line-height: 1.7;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  margin-bottom: 0.45rem;
-}
-
-.chord-only-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 0.45rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 @media (max-width: 640px) {
@@ -216,15 +262,18 @@ html {
     font-size: 12px;
   }
 
+  .chord-word-wrap-line,
   .chord-lyric-line {
-    margin-bottom: 0.8rem;
+    column-gap: 0.55rem;
+    row-gap: 0.4rem;
   }
 
-  .chord-name {
-    font-size: 0.95em;
+  .chord-word-chord {
+    font-size: 0.68em;
   }
 }
 
+/* Wheel animations */
 .wheel-zooming {
   animation: wheelZoomPulse 0.55s ease-in-out infinite alternate;
 }
@@ -253,7 +302,21 @@ html {
   }
 }
 
+/* Only Song Lineup fields should have visible input borders */
+.song-lineup-bordered-fields input:not([type='checkbox']):not([type='radio']),
+.song-lineup-bordered-fields textarea,
+.song-lineup-bordered-fields select {
+  border: 1px solid rgb(203 213 225) !important;
+  background-color: rgb(var(--color-surface));
+}
 
+.song-lineup-bordered-fields input:focus,
+.song-lineup-bordered-fields textarea:focus,
+.song-lineup-bordered-fields select:focus {
+  border-color: rgb(var(--color-primary)) !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(var(--color-primary) / 0.25);
+}
 
 /* Print styles */
 @media print {
@@ -280,156 +343,4 @@ html {
     size: A4 portrait;
     margin: 12mm;
   }
-}
-
-.song-lineup-bordered-fields input:not([type='checkbox']):not([type='radio']),
-.song-lineup-bordered-fields textarea,
-.song-lineup-bordered-fields select {
-  border: 1px solid rgb(203 213 225) !important;
-  background-color: rgb(var(--color-surface));
-}
-
-.song-lineup-bordered-fields input:focus,
-.song-lineup-bordered-fields textarea:focus,
-.song-lineup-bordered-fields select:focus {
-  border-color: rgb(var(--color-primary)) !important;
-  outline: none;
-  box-shadow: 0 0 0 2px rgb(var(--color-primary) / 0.25);
-}
-
-.chord-lyrics-box {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.chord-pair-line {
-  max-width: 100%;
-  overflow-x: auto;
-  padding: 0.15rem 0 0.4rem;
-  -webkit-overflow-scrolling: touch;
-
-.chord-lyrics-box {
-  overflow-x: hidden;
-}
-
-.chord-word-wrap-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  column-gap: 0.65rem;
-  row-gap: 0.35rem;
-  padding: 0.15rem 0 0.55rem;
-  max-width: 100%;
-}
-
-.chord-word-unit {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  flex: 0 0 auto;
-  max-width: 100%;
-  white-space: nowrap;
-}
-
-.chord-word-chord {
-  min-height: 1rem;
-  font-size: 0.7em;
-  line-height: 1;
-  font-weight: 800;
-  color: rgb(var(--color-primary));
-  white-space: nowrap;
-}
-
-.chord-word-lyric {
-  line-height: 1.35;
-  color: rgb(var(--color-church-navy));
-  white-space: nowrap;
-  word-break: keep-all;
-  overflow-wrap: normal;
-}
-
-.chord-only-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-  white-space: normal;
-  word-break: keep-all;
-  overflow-wrap: normal;
-  padding: 0.15rem 0 0.35rem;
-}
-
-.lyric-only-line {
-  white-space: normal;
-  word-break: keep-all;
-  overflow-wrap: normal;
-  line-height: 1.45;
-  padding-bottom: 0.2rem;
-}
-
-  .btn-secondary {
-  border: 1px solid rgb(203 213 225) !important;
-  background-color: rgb(var(--color-surface));
-}
-
-.btn-secondary:hover {
-  border-color: rgb(var(--color-primary)) !important;
-}
-
-.chord-lyrics-box {
-  overflow-x: hidden;
-}
-
-.chord-word-wrap-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  column-gap: 0.65rem;
-  row-gap: 0.35rem;
-  padding: 0.15rem 0 0.55rem;
-  max-width: 100%;
-}
-
-.chord-word-unit {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  flex: 0 0 auto;
-  max-width: 100%;
-  white-space: nowrap;
-}
-
-.chord-word-chord {
-  min-height: 1rem;
-  font-size: 0.7em;
-  line-height: 1;
-  font-weight: 800;
-  color: rgb(var(--color-primary));
-  white-space: nowrap;
-}
-
-.chord-word-lyric {
-  line-height: 1.35;
-  color: rgb(var(--color-church-navy));
-  white-space: nowrap;
-  word-break: keep-all;
-  overflow-wrap: normal;
-}
-
-.chord-only-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-  white-space: normal;
-  word-break: keep-all;
-  overflow-wrap: normal;
-  padding: 0.15rem 0 0.35rem;
-}
-
-.lyric-only-line {
-  white-space: normal;
-  word-break: keep-all;
-  overflow-wrap: normal;
-  line-height: 1.45;
-  padding-bottom: 0.2rem;
-}
 }
