@@ -181,10 +181,10 @@ html {
 
 .chord-word-chord {
   display: block;
-  min-height: 1rem;
-  font-size: 0.72em;
-  line-height: 1;
-  font-weight: 800;
+  min-height: 1.15rem;
+  font-size: 0.95em;
+  line-height: 1.1;
+  font-weight: 900;
   color: rgb(var(--color-primary));
   white-space: nowrap;
 }
@@ -259,7 +259,7 @@ html {
 
 @media (max-width: 640px) {
   .chord-lyrics-box {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .chord-word-wrap-line,
@@ -269,7 +269,7 @@ html {
   }
 
   .chord-word-chord {
-    font-size: 0.68em;
+    font-size: 0.9em;
   }
 }
 
