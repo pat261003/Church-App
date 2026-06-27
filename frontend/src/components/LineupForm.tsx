@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import toast from 'react-hot-toast';
 import { fetchSongs } from '../api/songs';
 import { LineupSection, ServiceLineupInput, Song } from '../types';
@@ -12,6 +12,8 @@ const OPTIONAL_SECTIONS = [
   'Prayer Song',
   'Other',
 ];
+
+const LONG_PRESS_MS = 280;
 
 function formatLocalDate(date: Date) {
   const year = date.getFullYear();
@@ -114,6 +116,19 @@ export default function LineupForm({
       : DEFAULT_SECTIONS.map((name, index) => createSection(name, index))
   );
 
+  const [draggingSectionIndex, setDraggingSectionIndex] = useState<number | null>(null);
+  const [draggingSong, setDraggingSong] = useState<{
+    sectionIndex: number;
+    songIndex: number;
+  } | null>(null);
+
+  const longPressTimerRef = useRef<number | null>(null);
+  const draggingSectionIndexRef = useRef<number | null>(null);
+  const draggingSongRef = useRef<{
+    sectionIndex: number;
+    songIndex: number;
+  } | null>(null);
+
   useEffect(() => {
     fetchSongs()
       .then(setSongs)
@@ -129,6 +144,156 @@ export default function LineupForm({
       setServiceDate(getNextSundayDate());
     }
   }, [title, isEditing, dateTouched]);
+
+  useEffect(() => {
+    function handlePointerMove(event: PointerEvent) {
+      if (draggingSectionIndexRef.current !== null) {
+        event.preventDefault();
+
+        const element = document.elementFromPoint(event.clientX, event.clientY);
+        const target = element?.closest('[data-lineup-section-index]') as HTMLElement | null;
+
+        if (!target) return;
+
+        const targetIndex = Number(target.dataset.lineupSectionIndex);
+        const currentIndex = draggingSectionIndexRef.current;
+
+        if (Number.isNaN(targetIndex)) return;
+        if (targetIndex === currentIndex) return;
+
+        reorderSectionByDrag(currentIndex, targetIndex);
+        return;
+      }
+
+      if (draggingSongRef.current !== null) {
+        event.preventDefault();
+
+        const element = document.elementFromPoint(event.clientX, event.clientY);
+        const target = element?.closest('[data-lineup-song-index]') as HTMLElement | null;
+
+        if (!target) return;
+
+        const targetSectionIndex = Number(target.dataset.lineupSongSectionIndex);
+        const targetSongIndex = Number(target.dataset.lineupSongIndex);
+        const currentDrag = draggingSongRef.current;
+
+        if (Number.isNaN(targetSectionIndex) || Number.isNaN(targetSongIndex)) return;
+        if (targetSectionIndex !== currentDrag.sectionIndex) return;
+        if (targetSongIndex === currentDrag.songIndex) return;
+
+        reorderSongByDrag(currentDrag.sectionIndex, currentDrag.songIndex, targetSongIndex);
+      }
+    }
+
+    function handlePointerUp() {
+      finishDrag();
+    }
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+    };
+  }, []);
+
+  function clearLongPressTimer() {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
+
+  function finishDrag() {
+    clearLongPressTimer();
+
+    draggingSectionIndexRef.current = null;
+    draggingSongRef.current = null;
+
+    setDraggingSectionIndex(null);
+    setDraggingSong(null);
+  }
+
+  function startSectionLongPress(sectionIndex: number) {
+    clearLongPressTimer();
+
+    longPressTimerRef.current = window.setTimeout(() => {
+      draggingSectionIndexRef.current = sectionIndex;
+      draggingSongRef.current = null;
+
+      setDraggingSectionIndex(sectionIndex);
+      setDraggingSong(null);
+    }, LONG_PRESS_MS);
+  }
+
+  function startSongLongPress(sectionIndex: number, songIndex: number) {
+    clearLongPressTimer();
+
+    longPressTimerRef.current = window.setTimeout(() => {
+      draggingSongRef.current = {
+        sectionIndex,
+        songIndex,
+      };
+      draggingSectionIndexRef.current = null;
+
+      setDraggingSong({
+        sectionIndex,
+        songIndex,
+      });
+      setDraggingSectionIndex(null);
+    }, LONG_PRESS_MS);
+  }
+
+  function reorderSectionByDrag(fromIndex: number, toIndex: number) {
+    setSections(prev => {
+      if (fromIndex < 0 || fromIndex >= prev.length) return prev;
+      if (toIndex < 0 || toIndex >= prev.length) return prev;
+
+      const next = [...prev];
+      const [removed] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, removed);
+
+      draggingSectionIndexRef.current = toIndex;
+      setDraggingSectionIndex(toIndex);
+
+      return reorderSections(next);
+    });
+  }
+
+  function reorderSongByDrag(sectionIndex: number, fromIndex: number, toIndex: number) {
+    setSections(prev =>
+      prev.map((section, index) => {
+        if (index !== sectionIndex) return section;
+        if (fromIndex < 0 || fromIndex >= section.songs.length) return section;
+        if (toIndex < 0 || toIndex >= section.songs.length) return section;
+
+        const nextSongs = [...section.songs];
+        const [removed] = nextSongs.splice(fromIndex, 1);
+        nextSongs.splice(toIndex, 0, removed);
+
+        draggingSongRef.current = {
+          sectionIndex,
+          songIndex: toIndex,
+        };
+
+        setDraggingSong({
+          sectionIndex,
+          songIndex: toIndex,
+        });
+
+        return {
+          ...section,
+          songs: nextSongs.map((song, newIndex) => ({
+            ...song,
+            song_order: newIndex,
+          })),
+        };
+      })
+    );
+  }
 
   function updateSectionName(sectionIndex: number, value: string) {
     setSections(prev =>
@@ -153,20 +318,6 @@ export default function LineupForm({
     setSections(prev =>
       reorderSections(prev.filter((_, index) => index !== sectionIndex))
     );
-  }
-
-  function moveSection(sectionIndex: number, direction: -1 | 1) {
-    setSections(prev => {
-      const next = [...prev];
-      const targetIndex = sectionIndex + direction;
-
-      if (targetIndex < 0 || targetIndex >= next.length) return prev;
-
-      const [removed] = next.splice(sectionIndex, 1);
-      next.splice(targetIndex, 0, removed);
-
-      return reorderSections(next);
-    });
   }
 
   function addSongToSection(sectionIndex: number) {
@@ -222,30 +373,6 @@ export default function LineupForm({
             }
           : section
       )
-    );
-  }
-
-  function moveSong(sectionIndex: number, songIndex: number, direction: -1 | 1) {
-    setSections(prev =>
-      prev.map((section, index) => {
-        if (index !== sectionIndex) return section;
-
-        const nextSongs = [...section.songs];
-        const targetIndex = songIndex + direction;
-
-        if (targetIndex < 0 || targetIndex >= nextSongs.length) return section;
-
-        const [removed] = nextSongs.splice(songIndex, 1);
-        nextSongs.splice(targetIndex, 0, removed);
-
-        return {
-          ...section,
-          songs: nextSongs.map((song, newIndex) => ({
-            ...song,
-            song_order: newIndex,
-          })),
-        };
-      })
     );
   }
 
@@ -358,7 +485,7 @@ export default function LineupForm({
           <div>
             <h2 className="font-semibold text-primary">Song Lineup</h2>
             <p className="text-xs text-gray-400">
-              Add songs, leader keys, and optional song links.
+              Add songs, leader keys, and optional song links. Long press the handle to reorder.
             </p>
           </div>
 
@@ -380,32 +507,37 @@ export default function LineupForm({
         </div>
 
         {sections.map((section, sectionIndex) => (
-          <div key={sectionIndex} className="border border-church-border rounded-lg p-3 bg-white">
+          <div
+            key={sectionIndex}
+            data-lineup-section-index={sectionIndex}
+            className={`border border-church-border rounded-lg p-3 bg-white transition-all ${
+              draggingSectionIndex === sectionIndex
+                ? 'ring-2 ring-primary shadow-md scale-[1.01]'
+                : ''
+            }`}
+          >
             <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <button
+                type="button"
+                onPointerDown={e => {
+                  e.preventDefault();
+                  startSectionLongPress(sectionIndex);
+                }}
+                onPointerUp={finishDrag}
+                onPointerCancel={finishDrag}
+                className="btn-secondary text-xs cursor-grab active:cursor-grabbing select-none"
+                style={{ touchAction: 'none' }}
+                title="Long press and drag to reorder this section"
+              >
+                ☰ Hold
+              </button>
+
               <input
                 value={section.section_name}
                 onChange={e => updateSectionName(sectionIndex, e.target.value)}
                 className="input-field text-base sm:text-sm flex-1 min-w-40"
                 placeholder="Opening Song, Fast Song, Slow Song..."
               />
-
-              <button
-                type="button"
-                onClick={() => moveSection(sectionIndex, -1)}
-                disabled={sectionIndex === 0}
-                className="btn-secondary text-xs disabled:opacity-40"
-              >
-                ↑
-              </button>
-
-              <button
-                type="button"
-                onClick={() => moveSection(sectionIndex, 1)}
-                disabled={sectionIndex === sections.length - 1}
-                className="btn-secondary text-xs disabled:opacity-40"
-              >
-                ↓
-              </button>
 
               <button
                 type="button"
@@ -423,7 +555,13 @@ export default function LineupForm({
                 section.songs.map((song, songIndex) => (
                   <div
                     key={songIndex}
-                    className="bg-church-lightblue rounded-lg p-3 grid grid-cols-1 gap-2"
+                    data-lineup-song-section-index={sectionIndex}
+                    data-lineup-song-index={songIndex}
+                    className={`bg-church-lightblue rounded-lg p-3 grid grid-cols-1 gap-2 transition-all ${
+                      draggingSong?.sectionIndex === sectionIndex && draggingSong.songIndex === songIndex
+                        ? 'ring-2 ring-primary shadow-md scale-[1.01]'
+                        : ''
+                    }`}
                   >
                     <select
                       value={song.song_id}
@@ -462,23 +600,20 @@ export default function LineupForm({
                       placeholder="Optional notes"
                     />
 
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 items-center">
                       <button
                         type="button"
-                        onClick={() => moveSong(sectionIndex, songIndex, -1)}
-                        disabled={songIndex === 0}
-                        className="btn-secondary text-xs disabled:opacity-40 flex-1 sm:flex-none"
+                        onPointerDown={e => {
+                          e.preventDefault();
+                          startSongLongPress(sectionIndex, songIndex);
+                        }}
+                        onPointerUp={finishDrag}
+                        onPointerCancel={finishDrag}
+                        className="btn-secondary text-xs cursor-grab active:cursor-grabbing select-none flex-1 sm:flex-none"
+                        style={{ touchAction: 'none' }}
+                        title="Long press and drag to reorder this song"
                       >
-                        ↑ Move Up
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => moveSong(sectionIndex, songIndex, 1)}
-                        disabled={songIndex === section.songs.length - 1}
-                        className="btn-secondary text-xs disabled:opacity-40 flex-1 sm:flex-none"
-                      >
-                        ↓ Move Down
+                        ☰ Hold & Drag
                       </button>
 
                       <button
