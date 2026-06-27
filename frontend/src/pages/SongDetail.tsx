@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, type TouchEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetchSong, fetchSongs, getSongDocxExportUrl } from '../api/songs';
@@ -146,6 +146,69 @@ function LyricsSection({
   );
 }
 
+function FloatingAutoScrollControls({
+  autoScroll,
+  scrollSpeed,
+  setAutoScroll,
+  setScrollSpeed,
+}: {
+  autoScroll: boolean;
+  scrollSpeed: number;
+  setAutoScroll: React.Dispatch<React.SetStateAction<boolean>>;
+  setScrollSpeed: React.Dispatch<React.SetStateAction<number>>;
+}) {
+  function decreaseSpeed() {
+    setScrollSpeed(prev => Math.max(5, prev - 5));
+  }
+
+  function increaseSpeed() {
+    setScrollSpeed(prev => Math.min(150, prev + 5));
+  }
+
+  return (
+    <div
+      className="no-print fixed right-4 bottom-24 md:bottom-6 z-[60]"
+      onTouchStart={e => e.stopPropagation()}
+      onTouchEnd={e => e.stopPropagation()}
+      onClick={e => e.stopPropagation()}
+    >
+      <div className="flex items-center gap-2 rounded-full bg-primary/85 backdrop-blur-md border border-white/20 shadow-xl px-2.5 py-2 text-white">
+        <button
+          type="button"
+          onClick={decreaseSpeed}
+          className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 font-bold active:scale-95"
+          aria-label="Decrease scroll speed"
+        >
+          −
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setAutoScroll(prev => !prev)}
+          className="w-11 h-11 rounded-full bg-white text-primary font-extrabold shadow active:scale-95"
+          aria-label={autoScroll ? 'Pause auto scroll' : 'Start auto scroll'}
+        >
+          {autoScroll ? 'Ⅱ' : '▶'}
+        </button>
+
+        <button
+          type="button"
+          onClick={increaseSpeed}
+          className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 font-bold active:scale-95"
+          aria-label="Increase scroll speed"
+        >
+          +
+        </button>
+
+        <div className="pr-1 min-w-[42px] text-center">
+          <p className="text-[10px] font-bold leading-none">{scrollSpeed}</p>
+          <p className="text-[9px] text-white/75 leading-none mt-0.5">px/s</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SongDetail() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -160,7 +223,10 @@ export default function SongDetail() {
 
   const [autoScroll, setAutoScroll] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(35);
+  const [pendingSwipeTitle, setPendingSwipeTitle] = useState('');
 
+  const lyricsRef = useRef<HTMLDivElement | null>(null);
+  const shouldJumpToLyricsRef = useRef(false);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
@@ -169,11 +235,11 @@ export default function SongDetail() {
     return songList.findIndex(item => item.id === id);
   }, [id, songList]);
 
-  const previousSong = currentSongIndex > -1
+  const previousSong = currentSongIndex > -1 && songList.length > 1
     ? songList[(currentSongIndex - 1 + songList.length) % songList.length]
     : null;
 
-  const nextSong = currentSongIndex > -1
+  const nextSong = currentSongIndex > -1 && songList.length > 1
     ? songList[(currentSongIndex + 1) % songList.length]
     : null;
 
@@ -195,10 +261,24 @@ export default function SongDetail() {
       .then(data => {
         setSong(data);
         setCurrentKey(lineupKey || data.current_key || data.original_key);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setPendingSwipeTitle('');
+
+        setLoading(false);
+
+        window.setTimeout(() => {
+          if (shouldJumpToLyricsRef.current && lyricsRef.current) {
+            const top = lyricsRef.current.getBoundingClientRect().top + window.scrollY - 12;
+            window.scrollTo({ top, behavior: 'smooth' });
+            shouldJumpToLyricsRef.current = false;
+          } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        }, 80);
       })
-      .catch(() => toast.error('Failed to load song'))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        toast.error('Failed to load song');
+        setLoading(false);
+      });
   }, [id, lineupKey]);
 
   useEffect(() => {
@@ -234,6 +314,33 @@ export default function SongDetail() {
     };
   }, [autoScroll, scrollSpeed]);
 
+  if (loading && pendingSwipeTitle) {
+    return (
+      <>
+        <div className="flex flex-col gap-6 max-w-2xl mx-auto">
+          <div className="card">
+            <p className="text-xs font-bold text-primary uppercase tracking-wide">
+              Loading next song
+            </p>
+            <h1 className="text-2xl font-bold text-church-navy break-words mt-1">
+              {pendingSwipeTitle}
+            </h1>
+            <div className="mt-4">
+              <LoadingSpinner label="Loading lyrics..." />
+            </div>
+          </div>
+        </div>
+
+        <FloatingAutoScrollControls
+          autoScroll={autoScroll}
+          scrollSpeed={scrollSpeed}
+          setAutoScroll={setAutoScroll}
+          setScrollSpeed={setScrollSpeed}
+        />
+      </>
+    );
+  }
+
   if (loading) return <LoadingSpinner label="Loading song..." />;
   if (!song) return <p className="text-center text-gray-400 py-12">Song not found.</p>;
 
@@ -253,15 +360,17 @@ export default function SongDetail() {
     if (!targetSong) return;
 
     setAutoScroll(false);
+    setPendingSwipeTitle(targetSong.title);
+    shouldJumpToLyricsRef.current = true;
     navigate(`/songs/${targetSong.id}`);
   }
 
-  function handleTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+  function handleTouchStart(e: TouchEvent<HTMLDivElement>) {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
   }
 
-  function handleTouchEnd(e: React.TouchEvent<HTMLDivElement>) {
+  function handleTouchEnd(e: TouchEvent<HTMLDivElement>) {
     const endX = e.changedTouches[0].clientX;
     const endY = e.changedTouches[0].clientY;
 
@@ -280,198 +389,163 @@ export default function SongDetail() {
   }
 
   return (
-    <div
-      className="flex flex-col gap-6 max-w-2xl mx-auto"
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-    >
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-church-navy break-words">
-            {song.title}
-          </h1>
+    <>
+      <div className="flex flex-col gap-6 max-w-2xl mx-auto">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-church-navy break-words">
+              {song.title}
+            </h1>
 
-          {song.artist && (
-            <p className="text-gray-500 text-sm mt-1">
-              {song.artist}
-            </p>
-          )}
+            {song.artist && (
+              <p className="text-gray-500 text-sm mt-1">
+                {song.artist}
+              </p>
+            )}
 
-          {song.tags && (
-            <div className="flex gap-1 mt-2 flex-wrap">
-              {song.tags.split(',').map(t => (
-                <span
-                  key={t}
-                  className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded"
-                >
-                  {t.trim()}
-                </span>
+            {song.tags && (
+              <div className="flex gap-1 mt-2 flex-wrap">
+                {song.tags.split(',').map(t => (
+                  <span
+                    key={t}
+                    className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded"
+                  >
+                    {t.trim()}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2 flex-wrap mt-3">
+              <Link to="/songs" className="btn-secondary text-xs">
+                ← Back
+              </Link>
+
+              <Link to={`/songs/${id}/edit`} className="btn-secondary text-xs">
+                Edit
+              </Link>
+
+              <button onClick={() => window.print()} className="btn-secondary text-xs">
+                Print
+              </button>
+
+              <a href={getSongDocxExportUrl(id!)} download className="btn-secondary text-xs">
+                Export DOCX
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Swipe navigation */}
+        {songList.length > 1 && (
+          <div className="card no-print">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => goToSong(previousSong)}
+                className="btn-secondary text-xs"
+              >
+                ← Previous
+              </button>
+
+              <div className="text-center min-w-0">
+                <p className="text-xs font-bold text-primary uppercase tracking-wide">
+                  Swipe Lyrics
+                </p>
+                <p className="text-[11px] text-gray-400">
+                  Swipe left/right inside lyrics
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => goToSong(nextSong)}
+                className="btn-secondary text-xs"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Transpose controls */}
+        <div className="card">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-sm font-medium text-gray-600">Key:</span>
+            <div className="flex items-center gap-2">
+              <button onClick={handleTransposeDown}
+                className="w-8 h-8 rounded-full bg-primary text-white font-bold hover:bg-primary-dark transition-colors">
+                −
+              </button>
+              <span className="w-10 text-center font-bold text-lg text-primary">{currentKey}</span>
+              <button onClick={handleTransposeUp}
+                className="w-8 h-8 rounded-full bg-primary text-white font-bold hover:bg-primary-dark transition-colors">
+                +
+              </button>
+            </div>
+
+            <select
+              value={currentKey}
+              onChange={e => setCurrentKey(e.target.value)}
+              className="input-field w-auto text-sm"
+            >
+              {ALL_KEYS.map(k => (
+                <option key={k} value={k}>{k}</option>
               ))}
-            </div>
-          )}
+            </select>
 
-          <div className="flex gap-2 flex-wrap mt-3">
-            <Link to="/songs" className="btn-secondary text-xs">
-              ← Back
-            </Link>
-
-            <Link to={`/songs/${id}/edit`} className="btn-secondary text-xs">
-              Edit
-            </Link>
-
-            <button onClick={() => window.print()} className="btn-secondary text-xs">
-              Print
+            <button onClick={handleReset}
+              className="text-xs text-gray-500 hover:text-primary underline">
+              Reset ({song.original_key})
             </button>
 
-            <a href={getSongDocxExportUrl(id!)} download className="btn-secondary text-xs">
-              Export DOCX
-            </a>
+            <span className="text-xs text-gray-400">
+              Original: <strong>{song.original_key}</strong>
+            </span>
           </div>
         </div>
-      </div>
 
-      {/* Song navigation */}
-      {songList.length > 1 && (
-        <div className="card no-print">
-          <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={() => goToSong(previousSong)}
-              className="btn-secondary text-xs"
-            >
-              ← Previous
-            </button>
+        {/* Lyrics */}
+        <div
+          ref={lyricsRef}
+          className="card"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div className="mb-5 border-b border-church-border pb-3">
+            <p className="text-xs font-bold text-primary uppercase tracking-wide">
+              Now Singing
+            </p>
 
-            <div className="text-center min-w-0">
-              <p className="text-xs font-bold text-primary uppercase tracking-wide">
-                Swipe Song
+            <h2 className="text-xl font-bold text-church-navy break-words mt-1">
+              {song.title}
+            </h2>
+
+            {songList.length > 1 && (
+              <p className="text-[11px] text-gray-400 mt-1 no-print">
+                Swipe left for next song, right for previous song.
               </p>
-              <p className="text-[11px] text-gray-400">
-                Swipe left or right to switch songs
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => goToSong(nextSong)}
-              className="btn-secondary text-xs"
-            >
-              Next →
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Transpose controls */}
-      <div className="card">
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-sm font-medium text-gray-600">Key:</span>
-          <div className="flex items-center gap-2">
-            <button onClick={handleTransposeDown}
-              className="w-8 h-8 rounded-full bg-primary text-white font-bold hover:bg-primary-dark transition-colors">
-              −
-            </button>
-            <span className="w-10 text-center font-bold text-lg text-primary">{currentKey}</span>
-            <button onClick={handleTransposeUp}
-              className="w-8 h-8 rounded-full bg-primary text-white font-bold hover:bg-primary-dark transition-colors">
-              +
-            </button>
+            )}
           </div>
 
-          <select
-            value={currentKey}
-            onChange={e => setCurrentKey(e.target.value)}
-            className="input-field w-auto text-sm"
-          >
-            {ALL_KEYS.map(k => (
-              <option key={k} value={k}>{k}</option>
-            ))}
-          </select>
-
-          <button onClick={handleReset}
-            className="text-xs text-gray-500 hover:text-primary underline">
-            Reset ({song.original_key})
-          </button>
-
-          <span className="text-xs text-gray-400">
-            Original: <strong>{song.original_key}</strong>
-          </span>
-        </div>
-      </div>
-
-      {/* Auto scroll controls */}
-      <div className="card no-print">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div>
-              <h2 className="font-semibold text-primary text-sm">
-                Auto Scroll
-              </h2>
-              <p className="text-xs text-gray-400">
-                Use this while singing on mobile.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setAutoScroll(prev => !prev)}
-              className={autoScroll ? 'btn-primary text-xs' : 'btn-secondary text-xs'}
-            >
-              {autoScroll ? 'Pause Scroll' : 'Start Scroll'}
-            </button>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between gap-3 mb-1">
-              <label className="text-xs font-bold text-primary uppercase tracking-wide">
-                Speed
-              </label>
-
-              <span className="text-xs text-gray-500">
-                {scrollSpeed}px/sec
-              </span>
-            </div>
-
-            <input
-              type="range"
-              min="10"
-              max="120"
-              step="5"
-              value={scrollSpeed}
-              onChange={e => setScrollSpeed(Number(e.target.value))}
-              className="w-full accent-primary"
+          {song.sections.map(s => (
+            <LyricsSection
+              key={s.id}
+              section={s}
+              currentKey={currentKey}
+              originalKey={song.original_key}
             />
-
-            <div className="grid grid-cols-4 gap-2 mt-2">
-              <button type="button" onClick={() => setScrollSpeed(20)} className="btn-secondary text-[11px] px-2 py-1">
-                Slow
-              </button>
-              <button type="button" onClick={() => setScrollSpeed(35)} className="btn-secondary text-[11px] px-2 py-1">
-                Normal
-              </button>
-              <button type="button" onClick={() => setScrollSpeed(60)} className="btn-secondary text-[11px] px-2 py-1">
-                Fast
-              </button>
-              <button type="button" onClick={() => setScrollSpeed(90)} className="btn-secondary text-[11px] px-2 py-1">
-                Faster
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* Lyrics */}
-      <div className="card">
-        {song.sections.map(s => (
-          <LyricsSection
-            key={s.id}
-            section={s}
-            currentKey={currentKey}
-            originalKey={song.original_key}
-          />
-        ))}
-      </div>
-    </div>
+      <FloatingAutoScrollControls
+        autoScroll={autoScroll}
+        scrollSpeed={scrollSpeed}
+        setAutoScroll={setAutoScroll}
+        setScrollSpeed={setScrollSpeed}
+      />
+    </>
   );
 }

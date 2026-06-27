@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetchLineup } from '../api/lineups';
@@ -168,6 +168,69 @@ function LyricsSection({
   );
 }
 
+function FloatingAutoScrollControls({
+  autoScroll,
+  scrollSpeed,
+  setAutoScroll,
+  setScrollSpeed,
+}: {
+  autoScroll: boolean;
+  scrollSpeed: number;
+  setAutoScroll: React.Dispatch<React.SetStateAction<boolean>>;
+  setScrollSpeed: React.Dispatch<React.SetStateAction<number>>;
+}) {
+  function decreaseSpeed() {
+    setScrollSpeed(prev => Math.max(5, prev - 5));
+  }
+
+  function increaseSpeed() {
+    setScrollSpeed(prev => Math.min(150, prev + 5));
+  }
+
+  return (
+    <div
+      className="no-print fixed right-4 bottom-24 md:bottom-6 z-[60]"
+      onTouchStart={e => e.stopPropagation()}
+      onTouchEnd={e => e.stopPropagation()}
+      onClick={e => e.stopPropagation()}
+    >
+      <div className="flex items-center gap-2 rounded-full bg-primary/85 backdrop-blur-md border border-white/20 shadow-xl px-2.5 py-2 text-white">
+        <button
+          type="button"
+          onClick={decreaseSpeed}
+          className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 font-bold active:scale-95"
+          aria-label="Decrease scroll speed"
+        >
+          −
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setAutoScroll(prev => !prev)}
+          className="w-11 h-11 rounded-full bg-white text-primary font-extrabold shadow active:scale-95"
+          aria-label={autoScroll ? 'Pause auto scroll' : 'Start auto scroll'}
+        >
+          {autoScroll ? 'Ⅱ' : '▶'}
+        </button>
+
+        <button
+          type="button"
+          onClick={increaseSpeed}
+          className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 font-bold active:scale-95"
+          aria-label="Increase scroll speed"
+        >
+          +
+        </button>
+
+        <div className="pr-1 min-w-[42px] text-center">
+          <p className="text-[10px] font-bold leading-none">{scrollSpeed}</p>
+          <p className="text-[9px] text-white/75 leading-none mt-0.5">px/s</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LineupDetail() {
   const { id } = useParams<{ id: string }>();
 
@@ -183,6 +246,8 @@ export default function LineupDetail() {
   const [autoScroll, setAutoScroll] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(35);
 
+  const lyricsRef = useRef<HTMLDivElement | null>(null);
+  const shouldJumpToLyricsRef = useRef(false);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
@@ -231,10 +296,20 @@ export default function LineupDetail() {
           data.original_key;
 
         setCurrentKey(leaderKey);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setLoadingSong(false);
+
+        window.setTimeout(() => {
+          if (shouldJumpToLyricsRef.current && lyricsRef.current) {
+            const top = lyricsRef.current.getBoundingClientRect().top + window.scrollY - 12;
+            window.scrollTo({ top, behavior: 'smooth' });
+            shouldJumpToLyricsRef.current = false;
+          }
+        }, 80);
       })
-      .catch(() => toast.error('Failed to load lineup song lyrics'))
-      .finally(() => setLoadingSong(false));
+      .catch(() => {
+        toast.error('Failed to load lineup song lyrics');
+        setLoadingSong(false);
+      });
   }, [activeLineupSong?.song.song_id, activeLineupSong?.song.key_override]);
 
   useEffect(() => {
@@ -277,6 +352,7 @@ export default function LineupDetail() {
     if (lineupSongs.length === 0) return;
 
     setAutoScroll(false);
+    shouldJumpToLyricsRef.current = true;
 
     setActiveSongIndex(prev => {
       const next = prev + direction;
@@ -288,12 +364,12 @@ export default function LineupDetail() {
     });
   }
 
-  function handleTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+  function handleTouchStart(e: TouchEvent<HTMLDivElement>) {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
   }
 
-  function handleTouchEnd(e: React.TouchEvent<HTMLDivElement>) {
+  function handleTouchEnd(e: TouchEvent<HTMLDivElement>) {
     if (!singingMode) return;
 
     const endX = e.changedTouches[0].clientX;
@@ -333,98 +409,143 @@ export default function LineupDetail() {
   }
 
   return (
-    <div
-      className="max-w-3xl mx-auto flex flex-col gap-5"
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-    >
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-church-navy break-words">
-            {lineup.title}
-          </h1>
+    <>
+      <div className="max-w-3xl mx-auto flex flex-col gap-5">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-church-navy break-words">
+              {lineup.title}
+            </h1>
 
-          <p className="text-gray-500 text-sm mt-1">
-            {formatDatePH(lineup.service_date)} · Song Leader: {lineup.song_leader}
-          </p>
-
-          {lineup.notes && (
-            <p className="text-sm text-gray-500 mt-1">
-              {lineup.notes}
+            <p className="text-gray-500 text-sm mt-1">
+              {formatDatePH(lineup.service_date)} · Song Leader: {lineup.song_leader}
             </p>
-          )}
 
-          <div className="flex gap-2 flex-wrap mt-3">
-            <Link to="/lineups" className="btn-secondary text-xs">
-              ← Back
-            </Link>
-
-            <Link to={`/lineups/${lineup.id}/edit`} className="btn-secondary text-xs">
-              Edit
-            </Link>
-
-            <Link to={`/print/lineup/${lineup.id}`} className="btn-secondary text-xs">
-              Print
-            </Link>
-
-            {lineupSongs.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setSingingMode(prev => !prev)}
-                className={singingMode ? 'btn-primary text-xs' : 'btn-secondary text-xs'}
-              >
-                {singingMode ? 'Show Lineup List' : 'Singing Mode'}
-              </button>
+            {lineup.notes && (
+              <p className="text-sm text-gray-500 mt-1">
+                {lineup.notes}
+              </p>
             )}
-          </div>
-        </div>
-      </div>
 
-      {lineupSongs.length === 0 ? (
-        <div className="card">
-          <p className="text-center text-gray-400 py-6">No songs in this lineup.</p>
-        </div>
-      ) : singingMode ? (
-        <>
-          {/* Lineup song navigation */}
-          <div className="card no-print">
-            <div className="flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => goToLineupSong(-1)}
-                className="btn-secondary text-xs"
-              >
-                ← Previous
-              </button>
+            <div className="flex gap-2 flex-wrap mt-3">
+              <Link to="/lineups" className="btn-secondary text-xs">
+                ← Back
+              </Link>
 
-              <div className="text-center min-w-0">
-                <p className="text-xs font-bold text-primary uppercase tracking-wide">
-                  Song {activeSongIndex + 1} of {lineupSongs.length}
-                </p>
-                <p className="text-[11px] text-gray-400">
-                  Swipe left or right to switch lineup songs
-                </p>
-              </div>
+              <Link to={`/lineups/${lineup.id}/edit`} className="btn-secondary text-xs">
+                Edit
+              </Link>
 
-              <button
-                type="button"
-                onClick={() => goToLineupSong(1)}
-                className="btn-secondary text-xs"
-              >
-                Next →
-              </button>
+              <Link to={`/print/lineup/${lineup.id}`} className="btn-secondary text-xs">
+                Print
+              </Link>
+
+              {lineupSongs.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSingingMode(prev => !prev)}
+                  className={singingMode ? 'btn-primary text-xs' : 'btn-secondary text-xs'}
+                >
+                  {singingMode ? 'Show Lineup List' : 'Singing Mode'}
+                </button>
+              )}
             </div>
           </div>
+        </div>
 
-          {activeLineupSong && (
-            <div className="card">
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="min-w-0">
+        {lineupSongs.length === 0 ? (
+          <div className="card">
+            <p className="text-center text-gray-400 py-6">No songs in this lineup.</p>
+          </div>
+        ) : singingMode ? (
+          <>
+            {/* Lineup song navigation */}
+            <div className="card no-print">
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => goToLineupSong(-1)}
+                  className="btn-secondary text-xs"
+                >
+                  ← Previous
+                </button>
+
+                <div className="text-center min-w-0">
+                  <p className="text-xs font-bold text-primary uppercase tracking-wide">
+                    Song {activeSongIndex + 1} of {lineupSongs.length}
+                  </p>
+                  <p className="text-[11px] text-gray-400">
+                    Swipe inside lyrics
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => goToLineupSong(1)}
+                  className="btn-secondary text-xs"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+
+            {/* Transpose controls */}
+            {activeSongDetail && (
+              <div className="card">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-sm font-medium text-gray-600">Key:</span>
+                  <div className="flex items-center gap-2">
+                    <button onClick={handleTransposeDown}
+                      className="w-8 h-8 rounded-full bg-primary text-white font-bold hover:bg-primary-dark transition-colors">
+                      −
+                    </button>
+                    <span className="w-10 text-center font-bold text-lg text-primary">{currentKey}</span>
+                    <button onClick={handleTransposeUp}
+                      className="w-8 h-8 rounded-full bg-primary text-white font-bold hover:bg-primary-dark transition-colors">
+                      +
+                    </button>
+                  </div>
+
+                  <select
+                    value={currentKey}
+                    onChange={e => setCurrentKey(e.target.value)}
+                    className="input-field w-auto text-sm"
+                  >
+                    {ALL_KEYS.map(k => (
+                      <option key={k} value={k}>{k}</option>
+                    ))}
+                  </select>
+
+                  <button onClick={handleReset}
+                    className="text-xs text-gray-500 hover:text-primary underline">
+                    Reset
+                  </button>
+
+                  <span className="text-xs text-gray-400">
+                    Original: <strong>{activeSongDetail.original_key}</strong>
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Lyrics */}
+            <div
+              ref={lyricsRef}
+              className="card"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
+              {activeLineupSong && (
+                <div className="mb-5 border-b border-church-border pb-3">
                   <span className="section-label mb-2 inline-block">
                     {activeLineupSong.sectionName}
                   </span>
 
-                  <h2 className="text-xl font-bold text-church-navy break-words">
+                  <p className="text-xs font-bold text-primary uppercase tracking-wide">
+                    Now Singing · Song {activeSongIndex + 1} of {lineupSongs.length}
+                  </p>
+
+                  <h2 className="text-xl font-bold text-church-navy break-words mt-1">
                     {activeLineupSong.song.title}
                   </h2>
 
@@ -438,214 +559,124 @@ export default function LineupDetail() {
                       {activeLineupSong.song.notes}
                     </p>
                   )}
-                </div>
 
-                <div className="flex gap-2 flex-wrap">
-                  <Link
-                    to={getSongLink(activeLineupSong.song.song_id, currentKey)}
-                    className="btn-secondary text-xs"
-                  >
-                    Open Full Song
-                  </Link>
-
-                  {normalizeExternalLink(activeLineupSong.song.song_link) && (
-                    <a
-                      href={normalizeExternalLink(activeLineupSong.song.song_link)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-primary text-xs"
+                  <div className="flex gap-2 flex-wrap mt-3 no-print">
+                    <Link
+                      to={getSongLink(activeLineupSong.song.song_id, currentKey)}
+                      className="btn-secondary text-xs"
                     >
-                      Attached Link
-                    </a>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+                      Open Full Song
+                    </Link>
 
-          {/* Transpose controls */}
-          {activeSongDetail && (
-            <div className="card">
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-sm font-medium text-gray-600">Key:</span>
-                <div className="flex items-center gap-2">
-                  <button onClick={handleTransposeDown}
-                    className="w-8 h-8 rounded-full bg-primary text-white font-bold hover:bg-primary-dark transition-colors">
-                    −
-                  </button>
-                  <span className="w-10 text-center font-bold text-lg text-primary">{currentKey}</span>
-                  <button onClick={handleTransposeUp}
-                    className="w-8 h-8 rounded-full bg-primary text-white font-bold hover:bg-primary-dark transition-colors">
-                    +
-                  </button>
-                </div>
+                    {normalizeExternalLink(activeLineupSong.song.song_link) && (
+                      <a
+                        href={normalizeExternalLink(activeLineupSong.song.song_link)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-primary text-xs"
+                      >
+                        Attached Link
+                      </a>
+                    )}
+                  </div>
 
-                <select
-                  value={currentKey}
-                  onChange={e => setCurrentKey(e.target.value)}
-                  className="input-field w-auto text-sm"
-                >
-                  {ALL_KEYS.map(k => (
-                    <option key={k} value={k}>{k}</option>
-                  ))}
-                </select>
-
-                <button onClick={handleReset}
-                  className="text-xs text-gray-500 hover:text-primary underline">
-                  Reset
-                </button>
-
-                <span className="text-xs text-gray-400">
-                  Original: <strong>{activeSongDetail.original_key}</strong>
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Auto scroll controls */}
-          <div className="card no-print">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div>
-                  <h2 className="font-semibold text-primary text-sm">
-                    Auto Scroll
-                  </h2>
-                  <p className="text-xs text-gray-400">
-                    Use this while singing the lineup on mobile.
+                  <p className="text-[11px] text-gray-400 mt-3 no-print">
+                    Swipe left for next lineup song, right for previous song.
                   </p>
                 </div>
+              )}
 
-                <button
-                  type="button"
-                  onClick={() => setAutoScroll(prev => !prev)}
-                  className={autoScroll ? 'btn-primary text-xs' : 'btn-secondary text-xs'}
-                >
-                  {autoScroll ? 'Pause Scroll' : 'Start Scroll'}
-                </button>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between gap-3 mb-1">
-                  <label className="text-xs font-bold text-primary uppercase tracking-wide">
-                    Speed
-                  </label>
-
-                  <span className="text-xs text-gray-500">
-                    {scrollSpeed}px/sec
-                  </span>
-                </div>
-
-                <input
-                  type="range"
-                  min="10"
-                  max="120"
-                  step="5"
-                  value={scrollSpeed}
-                  onChange={e => setScrollSpeed(Number(e.target.value))}
-                  className="w-full accent-primary"
-                />
-
-                <div className="grid grid-cols-4 gap-2 mt-2">
-                  <button type="button" onClick={() => setScrollSpeed(20)} className="btn-secondary text-[11px] px-2 py-1">
-                    Slow
-                  </button>
-                  <button type="button" onClick={() => setScrollSpeed(35)} className="btn-secondary text-[11px] px-2 py-1">
-                    Normal
-                  </button>
-                  <button type="button" onClick={() => setScrollSpeed(60)} className="btn-secondary text-[11px] px-2 py-1">
-                    Fast
-                  </button>
-                  <button type="button" onClick={() => setScrollSpeed(90)} className="btn-secondary text-[11px] px-2 py-1">
-                    Faster
-                  </button>
-                </div>
-              </div>
+              {loadingSong ? (
+                <LoadingSpinner label="Loading song lyrics..." />
+              ) : activeSongDetail ? (
+                activeSongDetail.sections.map(section => (
+                  <LyricsSection
+                    key={section.id}
+                    section={section}
+                    currentKey={currentKey}
+                    originalKey={activeSongDetail.original_key}
+                  />
+                ))
+              ) : (
+                <p className="text-center text-gray-400 py-6">
+                  Lyrics not available for this song.
+                </p>
+              )}
             </div>
-          </div>
+          </>
+        ) : (
+          <div className="card flex flex-col gap-5">
+            {lineup.sections.map(section => (
+              <div key={section.id}>
+                <span className="section-label mb-2 inline-block">
+                  {section.section_name}
+                </span>
 
-          {/* Lyrics */}
-          <div className="card">
-            {loadingSong ? (
-              <LoadingSpinner label="Loading song lyrics..." />
-            ) : activeSongDetail ? (
-              activeSongDetail.sections.map(section => (
-                <LyricsSection
-                  key={section.id}
-                  section={section}
-                  currentKey={currentKey}
-                  originalKey={activeSongDetail.original_key}
-                />
-              ))
-            ) : (
-              <p className="text-center text-gray-400 py-6">
-                Lyrics not available for this song.
-              </p>
-            )}
-          </div>
-        </>
-      ) : (
-        <div className="card flex flex-col gap-5">
-          {lineup.sections.map(section => (
-            <div key={section.id}>
-              <span className="section-label mb-2 inline-block">
-                {section.section_name}
-              </span>
+                <div className="flex flex-col gap-2">
+                  {section.songs.map((song, index) => {
+                    const leaderKey = song.key_override || song.current_key || song.original_key || '';
+                    const attachedLink = normalizeExternalLink(song.song_link);
 
-              <div className="flex flex-col gap-2">
-                {section.songs.map((song, index) => {
-                  const leaderKey = song.key_override || song.current_key || song.original_key || '';
-                  const attachedLink = normalizeExternalLink(song.song_link);
-
-                  return (
-                    <div
-                      key={song.id}
-                      className="bg-church-lightblue rounded-lg p-3 flex flex-col gap-3"
-                    >
-                      <div>
-                        <Link
-                          to={getSongLink(song.song_id, leaderKey)}
-                          className="font-bold text-primary hover:underline text-base"
-                        >
-                          {index + 1}. {song.title}
-                        </Link>
-
-                        <p className="text-xs text-gray-500">
-                          Leader Key: {leaderKey || '—'}
-                          {song.artist ? ` · ${song.artist}` : ''}
-                        </p>
-
-                        {song.notes && (
-                          <p className="text-xs text-gray-400 mt-1">{song.notes}</p>
-                        )}
-                      </div>
-
-                      <div className="flex gap-2 flex-col sm:flex-row">
-                        <Link
-                          to={getSongLink(song.song_id, leaderKey)}
-                          className="btn-secondary text-xs text-center"
-                        >
-                          Open Lyrics
-                        </Link>
-
-                        {attachedLink && (
-                          <a
-                            href={attachedLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn-primary text-xs text-center"
+                    return (
+                      <div
+                        key={song.id}
+                        className="bg-church-lightblue rounded-lg p-3 flex flex-col gap-3"
+                      >
+                        <div>
+                          <Link
+                            to={getSongLink(song.song_id, leaderKey)}
+                            className="font-bold text-primary hover:underline text-base"
                           >
-                            Open Attached Link
-                          </a>
-                        )}
+                            {index + 1}. {song.title}
+                          </Link>
+
+                          <p className="text-xs text-gray-500">
+                            Leader Key: {leaderKey || '—'}
+                            {song.artist ? ` · ${song.artist}` : ''}
+                          </p>
+
+                          {song.notes && (
+                            <p className="text-xs text-gray-400 mt-1">{song.notes}</p>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2 flex-col sm:flex-row">
+                          <Link
+                            to={getSongLink(song.song_id, leaderKey)}
+                            className="btn-secondary text-xs text-center"
+                          >
+                            Open Lyrics
+                          </Link>
+
+                          {attachedLink && (
+                            <a
+                              href={attachedLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn-primary text-xs text-center"
+                            >
+                              Open Attached Link
+                            </a>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {singingMode && lineupSongs.length > 0 && (
+        <FloatingAutoScrollControls
+          autoScroll={autoScroll}
+          scrollSpeed={scrollSpeed}
+          setAutoScroll={setAutoScroll}
+          setScrollSpeed={setScrollSpeed}
+        />
       )}
-    </div>
+    </>
   );
 }
