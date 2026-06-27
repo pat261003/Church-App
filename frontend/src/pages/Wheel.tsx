@@ -314,6 +314,13 @@ function getInitialWheels(): WheelData[] {
 export default function Wheel() {
   const [wheels, setWheels] = useState<WheelData[]>(() => getInitialWheels());
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [wheelSize, setWheelSize] = useState(() => {
+    const savedSize = Number(localStorage.getItem('wheel-size') || 520);
+
+    if (Number.isNaN(savedSize)) return 520;
+
+    return Math.min(Math.max(savedSize, 320), 680);
+  });
   const wheelPageRef = useRef<HTMLDivElement | null>(null);
   const timeoutRefs = useRef<Record<string, number>>({});
   const previewTimeoutRefs = useRef<Record<string, number>>({});
@@ -328,6 +335,10 @@ export default function Wheel() {
 
     localStorage.setItem('wheel-list', JSON.stringify(safeWheels));
   }, [wheels]);
+
+  useEffect(() => {
+    localStorage.setItem('wheel-size', String(wheelSize));
+  }, [wheelSize]);
 
   useEffect(() => {
     return () => {
@@ -623,22 +634,72 @@ export default function Wheel() {
           </p>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="btn-secondary text-sm"
-          >
-            {isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
-          </button>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
+          <div className="rounded-xl bg-[rgb(var(--color-surface))] px-3 py-2 shadow-sm">
+            <div className="flex items-center justify-between gap-3 mb-1">
+              <label className="text-xs font-bold text-primary uppercase tracking-wide">
+                Wheel Size
+              </label>
 
-          <button
-            type="button"
-            onClick={addWheel}
-            className="btn-primary text-sm"
-          >
-            + Add Wheel
-          </button>
+              <span className="text-xs font-bold text-church-navy">
+                {wheelSize}px
+              </span>
+            </div>
+
+            <input
+              type="range"
+              min="320"
+              max="680"
+              step="20"
+              value={wheelSize}
+              onChange={e => setWheelSize(Number(e.target.value))}
+              className="w-48 max-w-full accent-primary"
+            />
+
+            <div className="grid grid-cols-3 gap-1 mt-2">
+              <button
+                type="button"
+                onClick={() => setWheelSize(400)}
+                className="btn-secondary text-[11px] px-2 py-1"
+              >
+                Small
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setWheelSize(520)}
+                className="btn-secondary text-[11px] px-2 py-1"
+              >
+                Medium
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setWheelSize(640)}
+                className="btn-secondary text-[11px] px-2 py-1"
+              >
+                Large
+              </button>
+            </div>
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="btn-secondary text-sm"
+            >
+              {isFullscreen ? 'Exit Full Screen' : 'Full Screen'}
+            </button>
+
+            <button
+              type="button"
+              onClick={addWheel}
+              className="btn-primary text-sm"
+            >
+              + Add Wheel
+            </button>
+          </div>
         </div>
       </div>
 
@@ -686,7 +747,7 @@ export default function Wheel() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-[minmax(230px,0.65fr)_minmax(560px,1.9fr)_minmax(230px,0.65fr)] 2xl:grid-cols-[minmax(260px,0.6fr)_minmax(700px,2.2fr)_minmax(260px,0.6fr)] gap-4 items-start">
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(230px,0.65fr)_minmax(360px,1.9fr)_minmax(230px,0.65fr)] 2xl:grid-cols-[minmax(260px,0.6fr)_minmax(520px,2.2fr)_minmax(260px,0.6fr)] gap-4 items-start">
                 {/* Names input */}
                 <div className="card !p-3 flex flex-col gap-3 min-w-0">
                   <div>
@@ -795,9 +856,15 @@ export default function Wheel() {
                     disabled={wheel.spinning || entries.length < 2}
                     aria-label="Spin the wheel"
                     title="Click to spin the wheel"
-                    className={`relative w-[310px] h-[310px] sm:w-[440px] sm:h-[440px] xl:w-[560px] xl:h-[560px] 2xl:w-[660px] 2xl:h-[660px] max-w-full flex items-center justify-center bg-transparent border-0 p-0 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 transition-transform ${
+                    className={`relative max-w-full flex items-center justify-center bg-transparent border-0 p-0 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 transition-transform ${
                       wheel.spinning ? 'wheel-zooming' : 'hover:scale-[1.03] active:scale-95'
                     }`}
+                    style={{
+                      width: wheelSize,
+                      height: wheelSize,
+                      maxWidth: 'calc(100vw - 2rem)',
+                      maxHeight: 'calc(100vw - 2rem)',
+                    }}
                   >
                     {/* Pointer */}
                     <div className="absolute -top-1 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
@@ -819,8 +886,12 @@ export default function Wheel() {
                     )}
 
                     <div
-                      className="w-[290px] h-[290px] sm:w-[410px] sm:h-[410px] xl:w-[530px] xl:h-[530px] 2xl:w-[630px] 2xl:h-[630px] max-w-full rounded-full transition-transform ease-out pointer-events-none"
+                      className="max-w-full rounded-full transition-transform ease-out pointer-events-none"
                       style={{
+                        width: Math.max(wheelSize - 30, 280),
+                        height: Math.max(wheelSize - 30, 280),
+                        maxWidth: 'calc(100vw - 3rem)',
+                        maxHeight: 'calc(100vw - 3rem)',
                         transform: `rotate(${wheel.rotation}deg)`,
                         transitionDuration: wheel.spinning ? '5.2s' : '0ms',
                       }}
