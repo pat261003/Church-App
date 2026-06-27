@@ -235,6 +235,10 @@ html {
   }
 }
 
+.border-church-border {
+  border-color: transparent !important;
+}
+
 /* Print styles */
 @media print {
   .no-print {
