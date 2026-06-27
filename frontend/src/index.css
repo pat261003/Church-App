@@ -86,7 +86,7 @@ html {
   .input-field {
     @apply w-full border border-church-border rounded-lg px-3 py-2
            focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
-           text-church-navy placeholder-gray-400;
+           text-church-navy placeholder-black;
     background-color: rgb(var(--color-surface));
   }
 
