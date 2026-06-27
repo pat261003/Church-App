@@ -135,16 +135,40 @@ function uniqueSectionName(baseName: string, existingNames: string[]) {
 }
 
 function parseFullSong(rawText: string): SongSection[] {
-  const lines = rawText.replace(/\r\n/g, '\n').split('\n');
+  const lines = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
 
   const parsedSections: SongSection[] = [];
   let currentSectionName = '';
   let currentLines: string[] = [];
 
-  function saveCurrentSection() {
-    const content = currentLines.join('\n').trim();
+  function cleanSectionContent(linesToClean: string[]) {
+    /*
+      Do not use .trim() here.
 
-    if (!content) return;
+      .trim() removes spaces from the first chord line, for example:
+          D             G
+
+      We only remove empty lines at the start and end,
+      but we keep the spaces inside the real chord lines.
+    */
+    let start = 0;
+    let end = linesToClean.length;
+
+    while (start < end && linesToClean[start].trim() === '') {
+      start++;
+    }
+
+    while (end > start && linesToClean[end - 1].trim() === '') {
+      end--;
+    }
+
+    return linesToClean.slice(start, end).join('\n');
+  }
+
+  function saveCurrentSection() {
+    const content = cleanSectionContent(currentLines);
+
+    if (!content.trim()) return;
 
     const existingNames = parsedSections.map(section => section.section_type);
     const finalName = uniqueSectionName(currentSectionName || 'Verse', existingNames);
@@ -177,9 +201,11 @@ function parseFullSong(rawText: string): SongSection[] {
     return parsedSections;
   }
 
-  const fallbackContent = rawText.trim();
+  const fallbackContent = cleanSectionContent(
+    rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
+  );
 
-  if (!fallbackContent) return [];
+  if (!fallbackContent.trim()) return [];
 
   return [
     {
