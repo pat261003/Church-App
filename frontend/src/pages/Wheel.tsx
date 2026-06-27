@@ -506,7 +506,7 @@ export default function Wheel() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto flex flex-col gap-6">
+    <div className="w-full min-h-[calc(100vh-5rem)] flex flex-col gap-6 px-3 sm:px-5 lg:px-8 py-4 sm:py-6 overflow-x-hidden">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-church-navy">
@@ -571,7 +571,7 @@ export default function Wheel() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.15fr_1fr] gap-4 items-start">
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(320px,0.9fr)_minmax(440px,1.25fr)_minmax(320px,0.9fr)] gap-5 items-start">
                 {/* Names input */}
                 <div className="card flex flex-col gap-4">
                   <div>
@@ -593,7 +593,7 @@ export default function Wheel() {
                       });
                     }}
                     placeholder={`Juan Dela Cruz\nMaria Santos\n1\n2\n3`}
-                    className="input-field min-h-[260px] text-sm"
+                    className="input-field min-h-[320px] xl:min-h-[430px] text-sm"
                   />
 
                   <div className="rounded-xl bg-primary-light p-3">
@@ -680,7 +680,7 @@ export default function Wheel() {
                     disabled={wheel.spinning || entries.length < 2}
                     aria-label="Spin the wheel"
                     title="Click to spin the wheel"
-                    className={`relative w-[300px] h-[300px] sm:w-[360px] sm:h-[360px] flex items-center justify-center bg-transparent border-0 p-0 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 transition-transform ${
+                    className={`relative w-[300px] h-[300px] sm:w-[380px] sm:h-[380px] 2xl:w-[460px] 2xl:h-[460px] flex items-center justify-center bg-transparent border-0 p-0 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 transition-transform ${
                       wheel.spinning ? 'wheel-zooming' : 'hover:scale-[1.03] active:scale-95'
                     }`}
                   >
@@ -704,7 +704,7 @@ export default function Wheel() {
                     )}
 
                     <div
-                      className="w-[280px] h-[280px] sm:w-[330px] sm:h-[330px] rounded-full transition-transform ease-out pointer-events-none"
+                      className="w-[280px] h-[280px] sm:w-[350px] sm:h-[350px] 2xl:w-[430px] 2xl:h-[430px] rounded-full transition-transform ease-out pointer-events-none"
                       style={{
                         transform: `rotate(${wheel.rotation}deg)`,
                         transitionDuration: wheel.spinning ? '5.2s' : '0ms',
@@ -858,7 +858,7 @@ export default function Wheel() {
                       <p className="text-sm">No results yet.</p>
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-2 max-h-[520px] overflow-y-auto pr-1">
+                    <div className="flex flex-col gap-2 max-h-[430px] xl:max-h-[650px] overflow-y-auto pr-1">
                       {wheel.results.map((result, index) => (
                         <div
                           key={result.id}

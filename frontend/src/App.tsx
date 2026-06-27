@@ -26,7 +26,7 @@ import Wheel from './pages/Wheel';
 
 function AppContent() {
   const location = useLocation();
-  const isHomePage = location.pathname === '/';
+  const isFullWidthPage = location.pathname === '/' || location.pathname === '/wheel';
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -34,7 +34,7 @@ function AppContent() {
 
       <main
         className={
-          isHomePage
+          isFullWidthPage
             ? 'flex-1 w-full px-0 py-0 pb-28 md:pb-6'
             : 'flex-1 max-w-5xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-6 pb-28 md:pb-6'
         }
