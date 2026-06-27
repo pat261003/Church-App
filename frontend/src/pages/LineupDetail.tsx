@@ -11,10 +11,20 @@ import { transposeLyrics, transposeKey, ALL_KEYS, isChordLine } from '../utils/t
 const SWIPE_DISTANCE = 70;
 const SWIPE_VERTICAL_LIMIT = 90;
 
-function getSongLink(songId: string, key?: string | null) {
-  if (!key) return `/songs/${songId}`;
+function getSongLink(songId: string, key?: string | null, lineupId?: string | null) {
+  const params = new URLSearchParams();
 
-  return `/songs/${songId}?key=${encodeURIComponent(key)}`;
+  if (key) {
+    params.set('key', key);
+  }
+
+  if (lineupId) {
+    params.set('fromLineup', lineupId);
+  }
+
+  const query = params.toString();
+
+  return `/songs/${songId}${query ? `?${query}` : ''}`;
 }
 
 function normalizeExternalLink(link?: string | null) {
@@ -562,7 +572,7 @@ export default function LineupDetail() {
 
                   <div className="flex gap-2 flex-wrap mt-3 no-print">
                     <Link
-                      to={getSongLink(activeLineupSong.song.song_id, currentKey)}
+                      to={getSongLink(activeLineupSong.song.song_id, currentKey, lineup.id)}
                       className="btn-secondary text-xs"
                     >
                       Open Full Song
@@ -624,7 +634,7 @@ export default function LineupDetail() {
                       >
                         <div>
                           <Link
-                            to={getSongLink(song.song_id, leaderKey)}
+                            to={getSongLink(song.song_id, leaderKey, lineup.id)}
                             className="font-bold text-primary hover:underline text-base"
                           >
                             {index + 1}. {song.title}
@@ -642,7 +652,7 @@ export default function LineupDetail() {
 
                         <div className="flex gap-2 flex-col sm:flex-row">
                           <Link
-                            to={getSongLink(song.song_id, leaderKey)}
+                            to={getSongLink(song.song_id, leaderKey, lineup.id)}
                             className="btn-secondary text-xs text-center"
                           >
                             Open Lyrics

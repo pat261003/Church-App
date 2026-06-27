@@ -298,3 +298,56 @@ html {
   outline: none;
   box-shadow: 0 0 0 2px rgb(var(--color-primary) / 0.25);
 }
+
+.chord-lyrics-box {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chord-pair-line {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0.15rem 0 0.4rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chord-line-pre,
+.lyric-line-pre {
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+  min-width: max-content;
+}
+
+.chord-line-pre {
+  color: rgb(var(--color-primary));
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.lyric-line-pre {
+  color: rgb(var(--color-church-navy));
+  line-height: 1.6;
+}
+
+.chord-only-line {
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+
+.lyric-only-line {
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.btn-secondary {
+  border: 1px solid rgb(203 213 225) !important;
+  background-color: rgb(var(--color-surface));
+}
+
+.btn-secondary:hover {
+  border-color: rgb(var(--color-primary)) !important;
+}

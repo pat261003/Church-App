@@ -35,48 +35,15 @@ function renderChordOverLyric(chordLine: string, lyricLine: string, keyPrefix: s
     );
   }
 
-  const pieces = [];
-  let cursor = 0;
-
-  chords.forEach((chord, index) => {
-    const chordPosition = Math.max(0, Math.min(chord.index, lyricLine.length));
-
-    if (chordPosition > cursor) {
-      pieces.push({
-        chord: '',
-        lyric: lyricLine.slice(cursor, chordPosition),
-      });
-      cursor = chordPosition;
-    }
-
-    const nextChordPosition =
-      index + 1 < chords.length
-        ? Math.max(chordPosition, Math.min(chords[index + 1].index, lyricLine.length))
-        : lyricLine.length;
-
-    pieces.push({
-      chord: chord.chord,
-      lyric: lyricLine.slice(cursor, nextChordPosition) || ' ',
-    });
-
-    cursor = nextChordPosition;
-  });
-
-  if (cursor < lyricLine.length) {
-    pieces.push({
-      chord: '',
-      lyric: lyricLine.slice(cursor),
-    });
-  }
-
   return (
-    <div key={keyPrefix} className="chord-lyric-line">
-      {pieces.map((piece, i) => (
-        <span key={i} className="chord-segment">
-          <span className="chord-name">{piece.chord || '\u00A0'}</span>
-          <span className="lyric-text">{piece.lyric || '\u00A0'}</span>
-        </span>
-      ))}
+    <div key={keyPrefix} className="chord-pair-line">
+      <div className="chord-line-pre">
+        {chordLine || ' '}
+      </div>
+
+      <div className="lyric-line-pre">
+        {lyricLine || ' '}
+      </div>
     </div>
   );
 }
