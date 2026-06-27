@@ -773,7 +773,7 @@ export default function Wheel() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-[minmax(420px,1.25fr)_minmax(340px,0.75fr)] gap-4 items-start">
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(560px,1.7fr)_minmax(280px,0.55fr)] gap-4 items-start">
                 {/* Wheel - left side */}
                 <div className="flex flex-col items-center gap-3 overflow-hidden min-w-0">
                   <div className="text-center">
@@ -1006,7 +1006,7 @@ export default function Wheel() {
                             });
                           }}
                           placeholder={`Juan Dela Cruz\nMaria Santos\n1\n2\n3`}
-                          className="input-field min-h-[360px] xl:min-h-[520px] text-sm"
+                          className="input-field min-h-[180px] xl:min-h-[260px] text-sm"
                         />
 
                         <div className="rounded-xl bg-primary-light p-3">
