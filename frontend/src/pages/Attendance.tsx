@@ -1,14 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import toast from 'react-hot-toast';
-import { fetchAttendance, addAttendance, updateAttendance, deleteAttendance } from '../api/attendance';
+import {
+  fetchAttendance,
+  addAttendance,
+  checkScheduleAssignments,
+  updateAttendance,
+  deleteAttendance,
+  type ScheduleAssignmentNotice,
+} from '../api/attendance';
 import { AttendanceRecord } from '../types';
 import ConfirmModal from '../components/ConfirmModal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { formatTimePH, getTodayDate } from '../utils/csv';
 import { ATTENDANCE_GROUPS, getAttendanceGroupCounts } from '../utils/attendanceGroups';
 
+type ScheduleNoticeState = {
+  name: string;
+  date: string;
+  assignments: ScheduleAssignmentNotice[];
+};
+
 export default function Attendance() {
   const today = getTodayDate();
+
   const [date, setDate] = useState(today);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,12 +43,15 @@ export default function Attendance() {
   const [deleteTarget, setDeleteTarget] = useState<AttendanceRecord | null>(null);
   const [editConfirm, setEditConfirm] = useState(false);
 
+  const [scheduleNotice, setScheduleNotice] = useState<ScheduleNoticeState | null>(null);
+
   useEffect(() => {
     loadRecords();
   }, [date]);
 
   async function loadRecords() {
     setLoading(true);
+
     try {
       const data = await fetchAttendance(date);
       setRecords(data);
@@ -45,13 +62,45 @@ export default function Attendance() {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function showScheduleNoticeForRegistrant(record: AttendanceRecord) {
+    try {
+      const assignments = await checkScheduleAssignments(record.full_name, date);
+
+      if (assignments.length === 0) {
+        setScheduleNotice(null);
+        return;
+      }
+
+      setScheduleNotice({
+        name: record.full_name,
+        date,
+        assignments,
+      });
+
+      const positions = assignments.map(item => item.position).join(', ');
+
+      toast.success(
+        `Reminder: ${record.full_name}, you are scheduled for ${positions}.`,
+        {
+          duration: 9000,
+        }
+      );
+    } catch {
+      /*
+        Do not block attendance registration if schedule checking fails.
+        Attendance was already saved successfully.
+      */
+    }
+  }
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
     if (!fullName.trim()) return toast.error('Full name is required');
     if (!ministry) return toast.error('Age/Gender group is required');
 
     setSubmitting(true);
+
     try {
       const record = await addAttendance({
         full_name: fullName,
@@ -68,6 +117,8 @@ export default function Attendance() {
       setNotes('');
 
       toast.success(`${record.full_name} registered at ${formatTimePH(record.entered_at)}`);
+
+      await showScheduleNoticeForRegistrant(record);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       toast.error(msg || 'Failed to register attendance');
@@ -133,9 +184,11 @@ export default function Attendance() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-church-navy">Sunday Attendance</h1>
+
           <p className="text-sm text-gray-500">
             Male: {groupCounts.male} · Female: {groupCounts.female}
           </p>
+
           <p className="text-xs text-gray-400">
             Male Children: {groupCounts.maleChild} · Female Children: {groupCounts.femaleChild} · Male Youth: {groupCounts.maleYouth} · Female Youth: {groupCounts.femaleYouth}
           </p>
@@ -144,7 +197,10 @@ export default function Attendance() {
         <input
           type="date"
           value={date}
-          onChange={e => setDate(e.target.value)}
+          onChange={e => {
+            setDate(e.target.value);
+            setScheduleNotice(null);
+          }}
           className="input-field w-auto"
         />
       </div>
@@ -157,6 +213,7 @@ export default function Attendance() {
             <label className="text-sm font-medium text-gray-600 mb-1 block">
               Full Name <span className="text-red-500">*</span>
             </label>
+
             <input
               value={fullName}
               onChange={e => setFullName(e.target.value)}
@@ -170,6 +227,7 @@ export default function Attendance() {
             <label className="text-sm font-medium text-gray-600 mb-1 block">
               Contact Number
             </label>
+
             <input
               value={contact}
               onChange={e => setContact(e.target.value)}
@@ -183,6 +241,7 @@ export default function Attendance() {
             <label className="text-sm font-medium text-gray-600 mb-1 block">
               Age/Gender Group <span className="text-red-500">*</span>
             </label>
+
             <select
               value={ministry}
               onChange={e => setMinistry(e.target.value)}
@@ -198,7 +257,10 @@ export default function Attendance() {
           </div>
 
           <div className="sm:col-span-2">
-            <label className="text-sm font-medium text-gray-600 mb-1 block">Notes</label>
+            <label className="text-sm font-medium text-gray-600 mb-1 block">
+              Notes
+            </label>
+
             <input
               value={notes}
               onChange={e => setNotes(e.target.value)}
@@ -212,6 +274,56 @@ export default function Attendance() {
           {submitting ? 'Registering...' : 'Register Attendance'}
         </button>
       </form>
+
+      {scheduleNotice && (
+        <div className="card border-2 border-primary/30 bg-primary-light">
+          <div className="flex items-start gap-3">
+            <div className="text-3xl">🔔</div>
+
+            <div className="flex-1">
+              <p className="text-xs font-bold text-primary uppercase tracking-wide">
+                {scheduleNotice.date === today ? 'Today’s Schedule Reminder' : 'Schedule Reminder'}
+              </p>
+
+              <h2 className="text-lg font-bold text-church-navy mt-1">
+                {scheduleNotice.name}, you are scheduled.
+              </h2>
+
+              <div className="mt-3 flex flex-col gap-2">
+                {scheduleNotice.assignments.map((assignment, index) => (
+                  <div
+                    key={`${assignment.position}-${index}`}
+                    className="rounded-lg bg-white/70 border border-white p-3"
+                  >
+                    <p className="font-bold text-primary">
+                      {assignment.position}
+                    </p>
+
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {assignment.title}
+                      {assignment.activity ? ` · ${assignment.activity}` : ''}
+                    </p>
+
+                    {assignment.notes && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Notes: {assignment.notes}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setScheduleNotice(null)}
+                className="btn-secondary text-xs mt-3"
+              >
+                Hide Reminder
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
@@ -299,6 +411,7 @@ export default function Attendance() {
                         <td className="py-2 px-3">
                           <div className="flex gap-1">
                             <button
+                              type="button"
                               onClick={() => setEditConfirm(true)}
                               className="text-xs bg-primary text-white px-2 py-1 rounded"
                             >
@@ -306,6 +419,7 @@ export default function Attendance() {
                             </button>
 
                             <button
+                              type="button"
                               onClick={() => setEditId(null)}
                               className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded"
                             >
@@ -341,6 +455,7 @@ export default function Attendance() {
                         <td className="py-2 px-3">
                           <div className="flex gap-1">
                             <button
+                              type="button"
                               onClick={() => startEdit(r)}
                               className="text-xs text-primary hover:underline"
                             >
@@ -348,6 +463,7 @@ export default function Attendance() {
                             </button>
 
                             <button
+                              type="button"
                               onClick={() => setDeleteTarget(r)}
                               className="text-xs text-red-500 hover:underline"
                             >

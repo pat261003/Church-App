@@ -5,6 +5,15 @@ const BASE = import.meta.env.VITE_API_URL || '';
 
 const api = axios.create({ baseURL: BASE });
 
+export type ScheduleAssignmentNotice = {
+  title: string;
+  service_date: string;
+  activity?: string | null;
+  position: string;
+  person_name: string;
+  notes?: string | null;
+};
+
 // Keep Render from cold-starting: ping on load
 export const pingServer = () =>
   api.get('/health').catch(() => {});
@@ -26,6 +35,14 @@ export const addAttendance = (data: {
   notes?: string;
 }) => api.post<AttendanceRecord>('/api/attendance', data).then(r => r.data);
 
+export const checkScheduleAssignments = (name: string, date: string) =>
+  api.get<ScheduleAssignmentNotice[]>('/api/schedules/assignment-check', {
+    params: {
+      name,
+      date,
+    },
+  }).then(r => r.data);
+
 export const updateAttendance = (
   id: string,
   data: { full_name: string; contact_number?: string; ministry_group?: string; notes?: string }
@@ -38,6 +55,7 @@ export const getCSVUrl = (date?: string, month?: number, year?: number): string 
   if (date) return `${BASE}/api/attendance/export/csv?date=${date}`;
   return `${BASE}/api/attendance/export/csv?month=${month}&year=${year}`;
 };
+
 export const getXLSXUrl = (date?: string, month?: number, year?: number): string => {
   if (date) return `${BASE}/api/attendance/export/xlsx?date=${date}`;
   return `${BASE}/api/attendance/export/xlsx?month=${month}&year=${year}`;
