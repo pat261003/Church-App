@@ -34,7 +34,7 @@
   --color-church-border: 255 255 255;    
 
   --color-card: 255 219 209;              /* #FFDBD1 */
-  --color-surface: 248 243 234;           /* #F8F3EA */
+  --color-surface: 11 25 87;           /* #0B1957 */
 }
 
 
@@ -49,7 +49,7 @@ html[data-theme='rose'] {
   --color-church-border: 255 255 255;
 
   --color-card: 255 219 209;
-  --color-surface: 248 243 234;
+  --color-surface: 11 25 87;    /* #0B1957 */
 }
 
 html {
