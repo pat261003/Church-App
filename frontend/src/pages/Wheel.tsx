@@ -151,6 +151,21 @@ function formatDateTime(value: string) {
   });
 }
 
+function getResultTimestamp(result: WheelResult) {
+  const date = new Date(result.created_at);
+  const time = date.getTime();
+
+  if (Number.isNaN(time)) return 0;
+
+  return time;
+}
+
+function getRankedResults(results: WheelResult[]) {
+  return [...results].sort(
+    (a, b) => getResultTimestamp(a) - getResultTimestamp(b)
+  );
+}
+
 function polarToCartesian(centerX: number, centerY: number, radius: number, angleInDegrees: number) {
   const angleInRadians = (angleInDegrees - 90) * Math.PI / 180;
 
@@ -314,6 +329,7 @@ function getInitialWheels(): WheelData[] {
 export default function Wheel() {
   const [wheels, setWheels] = useState<WheelData[]>(() => getInitialWheels());
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [activePanels, setActivePanels] = useState<Record<string, 'entries' | 'results'>>({});
   const [wheelSize, setWheelSize] = useState(() => {
     const savedSize = Number(localStorage.getItem('wheel-size') || 520);
 
@@ -321,6 +337,7 @@ export default function Wheel() {
 
     return Math.min(Math.max(savedSize, 320), 680);
   });
+
   const wheelPageRef = useRef<HTMLDivElement | null>(null);
   const timeoutRefs = useRef<Record<string, number>>({});
   const previewTimeoutRefs = useRef<Record<string, number>>({});
@@ -385,6 +402,13 @@ export default function Wheel() {
     } catch {
       toast.error('Fullscreen is not supported on this browser');
     }
+  }
+
+  function setWheelPanel(wheelId: string, panel: 'entries' | 'results') {
+    setActivePanels(prev => ({
+      ...prev,
+      [wheelId]: panel,
+    }));
   }
 
   function updateWheel(wheelId: string, updater: Partial<WheelData> | ((wheel: WheelData) => WheelData)) {
@@ -564,7 +588,7 @@ export default function Wheel() {
             ...currentWheel,
             winner: chosenValue,
             previewWinner: '',
-            results: [result, ...currentWheel.results],
+            results: [...currentWheel.results, result],
             spinning: false,
             entryText: currentWheel.removeWinner
               ? removeOneEntryFromText(currentWheel.entryText, chosenValue)
@@ -707,6 +731,8 @@ export default function Wheel() {
         {wheels.map((wheel, wheelIndex) => {
           const entries = parseEntries(wheel.entryText);
           const sliceAngle = entries.length > 0 ? 360 / entries.length : 360;
+          const activePanel = activePanels[wheel.id] || 'entries';
+          const rankedResults = getRankedResults(wheel.results);
 
           return (
             <section key={wheel.id} className="flex flex-col gap-3">
@@ -747,99 +773,9 @@ export default function Wheel() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-[minmax(230px,0.65fr)_minmax(360px,1.9fr)_minmax(230px,0.65fr)] 2xl:grid-cols-[minmax(260px,0.6fr)_minmax(520px,2.2fr)_minmax(260px,0.6fr)] gap-4 items-start">
-                {/* Names input */}
-                <div className="card !p-3 flex flex-col gap-3 min-w-0">
-                  <div>
-                    <h2 className="font-bold text-primary">
-                      Names / Numbers
-                    </h2>
-
-                    <p className="text-xs text-gray-500 mt-1">
-                      Type one per line. You can also separate using commas.
-                    </p>
-                  </div>
-
-                  <textarea
-                    value={wheel.entryText}
-                    onChange={e => {
-                      updateWheel(wheel.id, {
-                        entryText: e.target.value,
-                        sourceLabel: 'Manual',
-                      });
-                    }}
-                    placeholder={`Juan Dela Cruz\nMaria Santos\n1\n2\n3`}
-                    className="input-field min-h-[220px] xl:min-h-[300px] text-sm"
-                  />
-
-                  <div className="rounded-xl bg-primary-light p-3">
-                    <p className="text-xs font-bold text-primary uppercase tracking-wide">
-                      Attendance Import
-                    </p>
-
-                    <label className="text-xs text-gray-500 mt-2 block">
-                      Attendance date
-                    </label>
-
-                    <input
-                      type="date"
-                      value={wheel.attendanceDate}
-                      onChange={e => updateWheel(wheel.id, { attendanceDate: e.target.value })}
-                      className="input-field mt-1 text-sm"
-                    />
-
-                    <div className="grid grid-cols-1 gap-2 mt-3">
-                      <button
-                        type="button"
-                        onClick={() => loadAttendanceNames(wheel.id, 'replace')}
-                        className="btn-secondary text-xs"
-                      >
-                        Replace with Attendees
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => loadAttendanceNames(wheel.id, 'append')}
-                        className="btn-secondary text-xs"
-                      >
-                        Add Attendees
-                      </button>
-                    </div>
-                  </div>
-
-                  <label className="flex items-start gap-2 text-sm text-church-navy">
-                    <input
-                      type="checkbox"
-                      checked={wheel.removeWinner}
-                      onChange={e => updateWheel(wheel.id, { removeWinner: e.target.checked })}
-                      className="mt-1"
-                    />
-
-                    <span>
-                      Remove winner after every spin
-                      <span className="block text-xs text-gray-500">
-                        Turn this on if the same name should not win again.
-                      </span>
-                    </span>
-                  </label>
-
-                  <div className="flex gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => clearWheel(wheel.id)}
-                      className="btn-secondary text-xs"
-                    >
-                      Clear Wheel
-                    </button>
-
-                    <span className="text-xs text-gray-400 self-center">
-                      {entries.length} item(s) in wheel
-                    </span>
-                  </div>
-                </div>
-
-                {/* Wheel */}
-                  <div className="!p-3 sm:!p-4 flex flex-col items-center gap-3 overflow-hidden min-w-0">
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(420px,1.25fr)_minmax(340px,0.75fr)] gap-4 items-start">
+                {/* Wheel - left side */}
+                <div className="flex flex-col items-center gap-3 overflow-hidden min-w-0">
                   <div className="text-center">
                     <h2 className="font-bold text-primary">
                       Random Wheel
@@ -998,7 +934,7 @@ export default function Wheel() {
                   </button>
 
                   {wheel.winner && (
-                    <div className="w-full rounded-2xl bg-primary-light border border-church-border p-4 text-center">
+                    <div className="w-full max-w-xl rounded-2xl bg-primary-light border border-church-border p-4 text-center">
                       <p className="text-xs font-bold text-primary uppercase tracking-wide">
                         Selected
                       </p>
@@ -1014,69 +950,196 @@ export default function Wheel() {
                   </p>
                 </div>
 
-                {/* Results */}
-                <div className="card !p-3 flex flex-col gap-3 min-w-0">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h2 className="font-bold text-primary">
-                        Results
-                      </h2>
+                {/* Entries / Results - right side */}
+                <div className="card !p-0 overflow-hidden min-w-0">
+                  <div className="grid grid-cols-2 border-b border-church-border">
+                    <button
+                      type="button"
+                      onClick={() => setWheelPanel(wheel.id, 'entries')}
+                      className={`px-4 py-3 text-sm font-bold transition-colors border-b-2 ${
+                        activePanel === 'entries'
+                          ? 'text-primary border-primary bg-[rgb(var(--color-surface))]'
+                          : 'text-gray-500 border-transparent hover:text-primary'
+                      }`}
+                    >
+                      Entries
+                      <span className="ml-2 inline-flex items-center justify-center rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-700">
+                        {entries.length}
+                      </span>
+                    </button>
 
-                      <p className="text-xs text-gray-500">
-                        Latest winners for this wheel.
-                      </p>
-                    </div>
-
-                    {wheel.results.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => clearResults(wheel.id)}
-                        className="btn-secondary text-xs"
-                      >
-                        Clear
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setWheelPanel(wheel.id, 'results')}
+                      className={`px-4 py-3 text-sm font-bold transition-colors border-b-2 ${
+                        activePanel === 'results'
+                          ? 'text-primary border-primary bg-[rgb(var(--color-surface))]'
+                          : 'text-gray-500 border-transparent hover:text-primary'
+                      }`}
+                    >
+                      Results
+                      <span className="ml-2 inline-flex items-center justify-center rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-700">
+                        {wheel.results.length}
+                      </span>
+                    </button>
                   </div>
 
-                  {wheel.results.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400">
-                      <p className="text-4xl mb-2">🎁</p>
-                      <p className="text-sm">No results yet.</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2 max-h-[320px] xl:max-h-[520px] overflow-y-auto pr-1">
-                      {wheel.results.map((result, index) => (
-                        <div
-                          key={result.id}
-                          className="rounded-xl border border-church-border bg-[rgb(var(--color-surface))] p-3"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="text-[11px] font-bold text-primary uppercase tracking-wide">
-                                Result #{wheel.results.length - index}
-                              </p>
+                  <div className="p-3">
+                    {activePanel === 'entries' ? (
+                      <div className="flex flex-col gap-3">
+                        <div>
+                          <h2 className="font-bold text-primary">
+                            Names / Numbers
+                          </h2>
 
-                              <p className="font-bold text-church-navy break-words">
-                                {result.value}
-                              </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Type one per line. You can also separate using commas.
+                          </p>
+                        </div>
 
-                              <p className="text-[11px] text-gray-400 mt-1">
-                                {result.source} · {formatDateTime(result.created_at)}
-                              </p>
-                            </div>
+                        <textarea
+                          value={wheel.entryText}
+                          onChange={e => {
+                            updateWheel(wheel.id, {
+                              entryText: e.target.value,
+                              sourceLabel: 'Manual',
+                            });
+                          }}
+                          placeholder={`Juan Dela Cruz\nMaria Santos\n1\n2\n3`}
+                          className="input-field min-h-[360px] xl:min-h-[520px] text-sm"
+                        />
+
+                        <div className="rounded-xl bg-primary-light p-3">
+                          <p className="text-xs font-bold text-primary uppercase tracking-wide">
+                            Attendance Import
+                          </p>
+
+                          <label className="text-xs text-gray-500 mt-2 block">
+                            Attendance date
+                          </label>
+
+                          <input
+                            type="date"
+                            value={wheel.attendanceDate}
+                            onChange={e => updateWheel(wheel.id, { attendanceDate: e.target.value })}
+                            className="input-field mt-1 text-sm"
+                          />
+
+                          <div className="grid grid-cols-1 gap-2 mt-3">
+                            <button
+                              type="button"
+                              onClick={() => loadAttendanceNames(wheel.id, 'replace')}
+                              className="btn-secondary text-xs"
+                            >
+                              Replace with Attendees
+                            </button>
 
                             <button
                               type="button"
-                              onClick={() => removeResult(wheel.id, result.id)}
-                              className="text-xs text-red-500 hover:underline shrink-0"
+                              onClick={() => loadAttendanceNames(wheel.id, 'append')}
+                              className="btn-secondary text-xs"
                             >
-                              Remove
+                              Add Attendees
                             </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
+
+                        <label className="flex items-start gap-2 text-sm text-church-navy">
+                          <input
+                            type="checkbox"
+                            checked={wheel.removeWinner}
+                            onChange={e => updateWheel(wheel.id, { removeWinner: e.target.checked })}
+                            className="mt-1"
+                          />
+
+                          <span>
+                            Remove winner after every spin
+                            <span className="block text-xs text-gray-500">
+                              Turn this on if the same name should not win again.
+                            </span>
+                          </span>
+                        </label>
+
+                        <div className="flex gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => clearWheel(wheel.id)}
+                            className="btn-secondary text-xs"
+                          >
+                            Clear Wheel
+                          </button>
+
+                          <span className="text-xs text-gray-400 self-center">
+                            {entries.length} item(s) in wheel
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h2 className="font-bold text-primary">
+                              Results
+                            </h2>
+
+                            <p className="text-xs text-gray-500">
+                              Rank #1 is always the first picked winner.
+                            </p>
+                          </div>
+
+                          {wheel.results.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => clearResults(wheel.id)}
+                              className="btn-secondary text-xs"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+
+                        {rankedResults.length === 0 ? (
+                          <div className="text-center py-12 text-gray-400">
+                            <p className="text-4xl mb-2">🎁</p>
+                            <p className="text-sm">No results yet.</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-2 max-h-[520px] xl:max-h-[680px] overflow-y-auto pr-1">
+                            {rankedResults.map((result, index) => (
+                              <div
+                                key={result.id}
+                                className="rounded-xl border border-church-border bg-[rgb(var(--color-surface))] p-3"
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="text-[11px] font-bold text-primary uppercase tracking-wide">
+                                      Rank #{index + 1}
+                                    </p>
+
+                                    <p className="font-bold text-church-navy break-words">
+                                      {result.value}
+                                    </p>
+
+                                    <p className="text-[11px] text-gray-400 mt-1">
+                                      {result.source} · {formatDateTime(result.created_at)}
+                                    </p>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => removeResult(wheel.id, result.id)}
+                                    className="text-xs text-red-500 hover:underline shrink-0"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </section>
