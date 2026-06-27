@@ -24,8 +24,44 @@ function getChordTokens(chordLine: string) {
   return tokens;
 }
 
+function getLyricWords(lyricLine: string) {
+  const words: { text: string; start: number; end: number }[] = [];
+  const regex = /\S+/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(lyricLine)) !== null) {
+    words.push({
+      text: match[0],
+      start: match.index,
+      end: match.index + match[0].length,
+    });
+  }
+
+  return words;
+}
+
+function findWordIndexForChord(
+  chordIndex: number,
+  words: { text: string; start: number; end: number }[]
+) {
+  if (words.length === 0) return -1;
+
+  const insideWordIndex = words.findIndex(
+    word => chordIndex >= word.start && chordIndex <= word.end
+  );
+
+  if (insideWordIndex !== -1) return insideWordIndex;
+
+  const nextWordIndex = words.findIndex(word => word.start >= chordIndex);
+
+  if (nextWordIndex !== -1) return nextWordIndex;
+
+  return words.length - 1;
+}
+
 function renderChordOverLyric(chordLine: string, lyricLine: string, keyPrefix: string) {
   const chords = getChordTokens(chordLine);
+  const words = getLyricWords(lyricLine);
 
   if (chords.length === 0) {
     return (
@@ -35,15 +71,45 @@ function renderChordOverLyric(chordLine: string, lyricLine: string, keyPrefix: s
     );
   }
 
-  return (
-    <div key={keyPrefix} className="chord-pair-line">
-      <div className="chord-line-pre">
-        {chordLine || ' '}
+  if (words.length === 0) {
+    return (
+      <div key={keyPrefix} className="chord-only-line">
+        {chords.map((chord, index) => (
+          <span key={index} className="chord-name mr-6">
+            {chord.chord}
+          </span>
+        ))}
       </div>
+    );
+  }
 
-      <div className="lyric-line-pre">
-        {lyricLine || ' '}
-      </div>
+  const chordsByWord: Record<number, string[]> = {};
+
+  chords.forEach(chord => {
+    const wordIndex = findWordIndexForChord(chord.index, words);
+
+    if (wordIndex === -1) return;
+
+    if (!chordsByWord[wordIndex]) {
+      chordsByWord[wordIndex] = [];
+    }
+
+    chordsByWord[wordIndex].push(chord.chord);
+  });
+
+  return (
+    <div key={keyPrefix} className="chord-word-wrap-line">
+      {words.map((word, index) => (
+        <span key={`${word.text}-${index}`} className="chord-word-unit">
+          <span className="chord-name chord-word-chord">
+            {chordsByWord[index]?.join(' ') || '\u00A0'}
+          </span>
+
+          <span className="lyric-text chord-word-lyric">
+            {word.text}
+          </span>
+        </span>
+      ))}
     </div>
   );
 }
@@ -182,6 +248,17 @@ export default function SongDetail() {
   const navigate = useNavigate();
 
   const lineupKey = searchParams.get('key');
+
+  const fromLineup = searchParams.get('fromLineup');
+
+function handleBack() {
+  if (fromLineup) {
+    navigate(`/lineups/${fromLineup}`);
+    return;
+  }
+
+  navigate('/songs');
+}
 
   const [song, setSong] = useState<Song | null>(null);
   const [songList, setSongList] = useState<Song[]>([]);
@@ -385,9 +462,9 @@ export default function SongDetail() {
             )}
 
             <div className="flex gap-2 flex-wrap mt-3">
-              <Link to="/songs" className="btn-secondary text-xs">
-                ← Back
-              </Link>
+              <button type="button" onClick={handleBack} className="btn-secondary text-xs">
+            ← Back
+          </button>
 
               <Link to={`/songs/${id}/edit`} className="btn-secondary text-xs">
                 Edit

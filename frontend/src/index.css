@@ -253,9 +253,7 @@ html {
   }
 }
 
-.border-church-border {
-  border-color: transparent !important;
-}
+
 
 /* Print styles */
 @media print {
@@ -309,45 +307,128 @@ html {
   overflow-x: auto;
   padding: 0.15rem 0 0.4rem;
   -webkit-overflow-scrolling: touch;
+
+.chord-lyrics-box {
+  overflow-x: hidden;
 }
 
-.chord-line-pre,
-.lyric-line-pre {
-  white-space: pre;
-  word-break: normal;
-  overflow-wrap: normal;
-  min-width: max-content;
+.chord-word-wrap-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  column-gap: 0.65rem;
+  row-gap: 0.35rem;
+  padding: 0.15rem 0 0.55rem;
+  max-width: 100%;
 }
 
-.chord-line-pre {
-  color: rgb(var(--color-primary));
+.chord-word-unit {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 0 0 auto;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.chord-word-chord {
+  min-height: 1rem;
+  font-size: 0.7em;
+  line-height: 1;
   font-weight: 800;
-  line-height: 1.35;
+  color: rgb(var(--color-primary));
+  white-space: nowrap;
 }
 
-.lyric-line-pre {
+.chord-word-lyric {
+  line-height: 1.35;
   color: rgb(var(--color-church-navy));
-  line-height: 1.6;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 .chord-only-line {
-  white-space: pre;
-  word-break: normal;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  white-space: normal;
+  word-break: keep-all;
   overflow-wrap: normal;
-  overflow-x: auto;
+  padding: 0.15rem 0 0.35rem;
 }
 
 .lyric-only-line {
-  white-space: pre-wrap;
-  word-break: normal;
+  white-space: normal;
+  word-break: keep-all;
   overflow-wrap: normal;
+  line-height: 1.45;
+  padding-bottom: 0.2rem;
 }
 
-.btn-secondary {
+  .btn-secondary {
   border: 1px solid rgb(203 213 225) !important;
   background-color: rgb(var(--color-surface));
 }
 
 .btn-secondary:hover {
   border-color: rgb(var(--color-primary)) !important;
+}
+
+.chord-lyrics-box {
+  overflow-x: hidden;
+}
+
+.chord-word-wrap-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  column-gap: 0.65rem;
+  row-gap: 0.35rem;
+  padding: 0.15rem 0 0.55rem;
+  max-width: 100%;
+}
+
+.chord-word-unit {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 0 0 auto;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.chord-word-chord {
+  min-height: 1rem;
+  font-size: 0.7em;
+  line-height: 1;
+  font-weight: 800;
+  color: rgb(var(--color-primary));
+  white-space: nowrap;
+}
+
+.chord-word-lyric {
+  line-height: 1.35;
+  color: rgb(var(--color-church-navy));
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.chord-only-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  padding: 0.15rem 0 0.35rem;
+}
+
+.lyric-only-line {
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  line-height: 1.45;
+  padding-bottom: 0.2rem;
 }
