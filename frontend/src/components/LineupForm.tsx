@@ -61,6 +61,12 @@ function getSongDragId(song: SortableLineupSong, index: number) {
   return song.client_id || song.id || `song-${index}`;
 }
 
+function getSongTitle(songId: string, songs: Song[]) {
+  const found = songs.find(song => song.id === songId);
+
+  return found?.title || 'No song selected';
+}
+
 function formatLocalDate(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -147,25 +153,14 @@ function reorderSongs(songs: SortableLineupSong[]) {
   }));
 }
 
-function SortableLineupSongItem({
+function SortableReorderSong({
   song,
-  sectionIndex,
   songIndex,
-  availableSongs,
-  updateSongInSection,
-  removeSongFromSection,
+  songs,
 }: {
   song: SortableLineupSong;
-  sectionIndex: number;
   songIndex: number;
-  availableSongs: Song[];
-  updateSongInSection: (
-    sectionIndex: number,
-    songIndex: number,
-    key: 'song_id' | 'key_override' | 'song_link' | 'notes',
-    value: string
-  ) => void;
-  removeSongFromSection: (sectionIndex: number, songIndex: number) => void;
+  songs: Song[];
 }) {
   const {
     attributes,
@@ -187,107 +182,55 @@ function SortableLineupSongItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-church-lightblue rounded-lg p-3 grid grid-cols-1 gap-2 ${
-        isDragging ? 'opacity-70 shadow-lg scale-[1.01]' : ''
+      className={`rounded-xl border border-church-border bg-[rgb(var(--color-surface))] p-3 transition-all ${
+        isDragging ? 'opacity-70 shadow-lg scale-[1.02]' : ''
       }`}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing px-3 py-3 rounded-lg bg-[rgb(var(--color-surface))] text-primary font-bold shrink-0"
+          className="cursor-grab active:cursor-grabbing px-3 py-3 rounded-lg bg-church-lightblue text-primary font-bold shrink-0 touch-none"
           title="Hold and drag to reorder"
         >
           ☰
         </button>
 
-        <select
-          value={song.song_id}
-          onChange={e => updateSongInSection(sectionIndex, songIndex, 'song_id', e.target.value)}
-          className="input-field text-base sm:text-sm flex-1 min-w-0"
-        >
-          <option value="">Select song...</option>
-          {availableSongs.map(s => (
-            <option key={s.id} value={s.id}>
-              {s.title} {s.original_key ? `(${s.original_key})` : ''}
-            </option>
-          ))}
-        </select>
-      </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-bold text-primary uppercase tracking-wide">
+            Song #{songIndex + 1}
+          </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <input
-          value={song.key_override || ''}
-          onChange={e => updateSongInSection(sectionIndex, songIndex, 'key_override', e.target.value)}
-          className="input-field text-base sm:text-sm"
-          placeholder="Leader key, e.g. E"
-        />
+          <p className="font-bold text-church-navy break-words leading-tight">
+            {getSongTitle(song.song_id, songs)}
+          </p>
 
-        <input
-          value={song.song_link || ''}
-          onChange={e => updateSongInSection(sectionIndex, songIndex, 'song_link', e.target.value)}
-          className="input-field text-base sm:text-sm"
-          placeholder="Song link, e.g. YouTube or Google Drive"
-          type="url"
-        />
-      </div>
-
-      <input
-        value={song.notes || ''}
-        onChange={e => updateSongInSection(sectionIndex, songIndex, 'notes', e.target.value)}
-        className="input-field text-base sm:text-sm"
-        placeholder="Optional notes"
-      />
-
-      <div className="flex justify-between items-center gap-2">
-        <p className="text-[11px] text-gray-400">
-          Hold ☰ and drag to reorder this song.
-        </p>
-
-        <button
-          type="button"
-          onClick={() => removeSongFromSection(sectionIndex, songIndex)}
-          className="text-red-400 hover:text-red-600 text-sm px-2 shrink-0"
-        >
-          Remove
-        </button>
+          {(song.key_override || song.notes) && (
+            <p className="text-xs text-gray-500 mt-1 break-words">
+              {song.key_override ? `Key: ${song.key_override}` : ''}
+              {song.key_override && song.notes ? ' • ' : ''}
+              {song.notes || ''}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function SortableLineupSectionCard({
+function SortableReorderSection({
   section,
   sectionIndex,
-  sectionsLength,
-  availableSongs,
+  songs,
   sensors,
-  updateSectionName,
-  removeSection,
-  addSongToSection,
-  updateSongInSection,
-  removeSongFromSection,
   handleSongDragEnd,
-  loadingSongs,
 }: {
   section: SortableLineupSection;
   sectionIndex: number;
-  sectionsLength: number;
-  availableSongs: Song[];
+  songs: Song[];
   sensors: DndSensors;
-  updateSectionName: (sectionIndex: number, value: string) => void;
-  removeSection: (sectionIndex: number) => void;
-  addSongToSection: (sectionIndex: number) => void;
-  updateSongInSection: (
-    sectionIndex: number,
-    songIndex: number,
-    key: 'song_id' | 'key_override' | 'song_link' | 'notes',
-    value: string
-  ) => void;
-  removeSongFromSection: (sectionIndex: number, songIndex: number) => void;
   handleSongDragEnd: (sectionIndex: number, event: DragEndEvent) => void;
-  loadingSongs: boolean;
 }) {
   const {
     attributes,
@@ -309,79 +252,69 @@ function SortableLineupSectionCard({
     <div
       ref={setNodeRef}
       style={style}
-      className={`border border-church-border rounded-lg p-3 bg-white ${
-        isDragging ? 'opacity-70 shadow-lg scale-[1.01]' : ''
+      className={`rounded-2xl border border-church-border bg-white p-3 transition-all ${
+        isDragging ? 'opacity-70 shadow-xl scale-[1.01]' : ''
       }`}
     >
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
+      <div className="flex items-center gap-3">
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing px-3 py-3 rounded-lg bg-church-lightblue text-primary font-bold shrink-0"
+          className="cursor-grab active:cursor-grabbing px-3 py-3 rounded-lg bg-church-lightblue text-primary font-bold shrink-0 touch-none"
           title="Hold and drag to reorder this section"
         >
           ☰
         </button>
 
-        <input
-          value={section.section_name}
-          onChange={e => updateSectionName(sectionIndex, e.target.value)}
-          className="input-field text-base sm:text-sm flex-1 min-w-40"
-          placeholder="Opening Song, Fast Song, Slow Song..."
-        />
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-bold text-primary uppercase tracking-wide">
+            Section #{sectionIndex + 1}
+          </p>
 
-        <button
-          type="button"
-          onClick={() => removeSection(sectionIndex)}
-          className="text-red-400 hover:text-red-600 text-sm"
-        >
-          Remove
-        </button>
+          <p className="font-bold text-church-navy break-words leading-tight">
+            {section.section_name || 'Untitled Section'}
+          </p>
+
+          <p className="text-xs text-gray-500 mt-1">
+            {section.songs.length} song(s)
+          </p>
+        </div>
       </div>
 
-      <p className="text-[11px] text-gray-400 mb-2">
-        Hold ☰ and drag to reorder this section.
-        {sectionsLength > 1 ? ' You can also drag songs inside this section.' : ''}
-      </p>
+      <div className="mt-3 rounded-xl bg-church-lightblue p-3">
+        <p className="text-xs font-bold text-primary mb-2">
+          Songs in this section
+        </p>
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={event => handleSongDragEnd(sectionIndex, event)}
-      >
-        <SortableContext
-          items={section.songs.map((song, songIndex) => getSongDragId(song, songIndex))}
-          strategy={verticalListSortingStrategy}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={event => handleSongDragEnd(sectionIndex, event)}
         >
-          <div className="flex flex-col gap-2">
-            {section.songs.length === 0 ? (
-              <p className="text-xs text-gray-400 py-2">No songs added in this section yet.</p>
-            ) : (
-              section.songs.map((song, songIndex) => (
-                <SortableLineupSongItem
-                  key={getSongDragId(song, songIndex)}
-                  song={song}
-                  sectionIndex={sectionIndex}
-                  songIndex={songIndex}
-                  availableSongs={availableSongs}
-                  updateSongInSection={updateSongInSection}
-                  removeSongFromSection={removeSongFromSection}
-                />
-              ))
-            )}
-          </div>
-        </SortableContext>
-      </DndContext>
-
-      <button
-        type="button"
-        onClick={() => addSongToSection(sectionIndex)}
-        disabled={loadingSongs}
-        className="btn-secondary text-sm w-full mt-3 py-3"
-      >
-        + Add Song
-      </button>
+          <SortableContext
+            items={section.songs.map((song, songIndex) => getSongDragId(song, songIndex))}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="flex flex-col gap-2">
+              {section.songs.length === 0 ? (
+                <p className="text-xs text-gray-400 py-2">
+                  No songs added in this section yet.
+                </p>
+              ) : (
+                section.songs.map((song, songIndex) => (
+                  <SortableReorderSong
+                    key={getSongDragId(song, songIndex)}
+                    song={song}
+                    songIndex={songIndex}
+                    songs={songs}
+                  />
+                ))
+              )}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </div>
     </div>
   );
 }
@@ -416,6 +349,7 @@ export default function LineupForm({
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [sectionToAdd, setSectionToAdd] = useState('Offering Song');
   const [submitting, setSubmitting] = useState(false);
+  const [reorderMode, setReorderMode] = useState(false);
 
   const [sections, setSections] = useState<SortableLineupSection[]>(
     initialData?.sections?.length
@@ -576,20 +510,18 @@ export default function LineupForm({
 
     const cleanSections = reorderSections(sections)
       .map(section => {
-        const cleanSection = { ...section };
-        delete cleanSection.client_id;
+        const { client_id: _sectionClientId, songs: sectionSongs, ...sectionWithoutClientId } = section;
 
         return {
-          ...cleanSection,
+          ...sectionWithoutClientId,
           section_name: section.section_name.trim(),
-          songs: section.songs
+          songs: sectionSongs
             .filter(song => song.song_id)
             .map((song, index) => {
-              const cleanSong = { ...song };
-              delete cleanSong.client_id;
+              const { client_id: _songClientId, ...songWithoutClientId } = song;
 
               return {
-                ...cleanSong,
+                ...songWithoutClientId,
                 song_order: index,
                 key_override: song.key_override?.trim() || null,
                 song_link: song.song_link?.trim() || null,
@@ -686,53 +618,173 @@ export default function LineupForm({
           <div>
             <h2 className="font-semibold text-primary">Song Lineup</h2>
             <p className="text-xs text-gray-400">
-              Add songs, leader keys, and optional song links. Hold ☰ and drag to reorder.
+              {reorderMode
+                ? 'Reorder mode is easier on phones. Hold ☰ and drag sections or songs.'
+                : 'Add songs, leader keys, and optional song links.'}
             </p>
           </div>
 
-          <div className="flex gap-2 w-full sm:w-auto">
-            <select
-              value={sectionToAdd}
-              onChange={e => setSectionToAdd(e.target.value)}
-              className="input-field text-sm flex-1 sm:w-auto"
-            >
-              {[...DEFAULT_SECTIONS, ...OPTIONAL_SECTIONS].map(section => (
-                <option key={section} value={section}>{section}</option>
-              ))}
-            </select>
-
-            <button type="button" onClick={addSection} className="btn-secondary text-sm">
-              + Section
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setReorderMode(prev => !prev)}
+            className={reorderMode ? 'btn-primary text-sm w-full sm:w-auto' : 'btn-secondary text-sm w-full sm:w-auto'}
+          >
+            {reorderMode ? 'Done Reordering' : 'Reorder Lineup'}
+          </button>
         </div>
 
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSectionDragEnd}>
-          <SortableContext
-            items={sections.map((section, index) => getSectionDragId(section, index))}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="flex flex-col gap-3">
-              {sections.map((section, sectionIndex) => (
-                <SortableLineupSectionCard
-                  key={getSectionDragId(section, sectionIndex)}
-                  section={section}
-                  sectionIndex={sectionIndex}
-                  sectionsLength={sections.length}
-                  availableSongs={songs}
-                  sensors={sensors}
-                  updateSectionName={updateSectionName}
-                  removeSection={removeSection}
-                  addSongToSection={addSongToSection}
-                  updateSongInSection={updateSongInSection}
-                  removeSongFromSection={removeSongFromSection}
-                  handleSongDragEnd={handleSongDragEnd}
-                  loadingSongs={loadingSongs}
-                />
-              ))}
+        {reorderMode ? (
+          <div className="flex flex-col gap-3">
+            <div className="rounded-xl bg-primary-light p-3">
+              <p className="text-sm font-semibold text-church-navy">
+                Reorder Mode
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Hold the ☰ button, then drag. Inputs are hidden here so dragging works better on phone.
+              </p>
             </div>
-          </SortableContext>
-        </DndContext>
+
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleSectionDragEnd}
+            >
+              <SortableContext
+                items={sections.map((section, index) => getSectionDragId(section, index))}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="flex flex-col gap-3">
+                  {sections.map((section, sectionIndex) => (
+                    <SortableReorderSection
+                      key={getSectionDragId(section, sectionIndex)}
+                      section={section}
+                      sectionIndex={sectionIndex}
+                      songs={songs}
+                      sensors={sensors}
+                      handleSongDragEnd={handleSongDragEnd}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <p className="text-xs text-gray-400">
+                  Use Reorder Lineup if you need to rearrange sections or songs.
+                </p>
+              </div>
+
+              <div className="flex gap-2 w-full sm:w-auto">
+                <select
+                  value={sectionToAdd}
+                  onChange={e => setSectionToAdd(e.target.value)}
+                  className="input-field text-sm flex-1 sm:w-auto"
+                >
+                  {[...DEFAULT_SECTIONS, ...OPTIONAL_SECTIONS].map(section => (
+                    <option key={section} value={section}>{section}</option>
+                  ))}
+                </select>
+
+                <button type="button" onClick={addSection} className="btn-secondary text-sm">
+                  + Section
+                </button>
+              </div>
+            </div>
+
+            {sections.map((section, sectionIndex) => (
+              <div key={getSectionDragId(section, sectionIndex)} className="border border-church-border rounded-lg p-3 bg-white">
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <input
+                    value={section.section_name}
+                    onChange={e => updateSectionName(sectionIndex, e.target.value)}
+                    className="input-field text-base sm:text-sm flex-1 min-w-40"
+                    placeholder="Opening Song, Fast Song, Slow Song..."
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => removeSection(sectionIndex)}
+                    className="text-red-400 hover:text-red-600 text-sm"
+                  >
+                    Remove
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  {section.songs.length === 0 ? (
+                    <p className="text-xs text-gray-400 py-2">No songs added in this section yet.</p>
+                  ) : (
+                    section.songs.map((song, songIndex) => (
+                      <div
+                        key={getSongDragId(song, songIndex)}
+                        className="bg-church-lightblue rounded-lg p-3 grid grid-cols-1 gap-2"
+                      >
+                        <select
+                          value={song.song_id}
+                          onChange={e => updateSongInSection(sectionIndex, songIndex, 'song_id', e.target.value)}
+                          className="input-field text-base sm:text-sm"
+                        >
+                          <option value="">Select song...</option>
+                          {songs.map(s => (
+                            <option key={s.id} value={s.id}>
+                              {s.title} {s.original_key ? `(${s.original_key})` : ''}
+                            </option>
+                          ))}
+                        </select>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <input
+                            value={song.key_override || ''}
+                            onChange={e => updateSongInSection(sectionIndex, songIndex, 'key_override', e.target.value)}
+                            className="input-field text-base sm:text-sm"
+                            placeholder="Leader key, e.g. E"
+                          />
+
+                          <input
+                            value={song.song_link || ''}
+                            onChange={e => updateSongInSection(sectionIndex, songIndex, 'song_link', e.target.value)}
+                            className="input-field text-base sm:text-sm"
+                            placeholder="Song link, e.g. YouTube or Google Drive"
+                            type="url"
+                          />
+                        </div>
+
+                        <input
+                          value={song.notes || ''}
+                          onChange={e => updateSongInSection(sectionIndex, songIndex, 'notes', e.target.value)}
+                          className="input-field text-base sm:text-sm"
+                          placeholder="Optional notes"
+                        />
+
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => removeSongFromSection(sectionIndex, songIndex)}
+                            className="text-red-400 hover:text-red-600 text-sm px-2"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => addSongToSection(sectionIndex)}
+                  disabled={loadingSongs}
+                  className="btn-secondary text-sm w-full mt-3 py-3"
+                >
+                  + Add Song
+                </button>
+              </div>
+            ))}
+          </>
+        )}
       </div>
 
       <div className="flex gap-3 flex-col sm:flex-row">
