@@ -839,7 +839,7 @@ export default function Wheel() {
                 </div>
 
                 {/* Wheel */}
-                <div className="card !p-3 sm:!p-4 flex flex-col items-center gap-3 overflow-hidden min-w-0">
+                  <div className="!p-3 sm:!p-4 flex flex-col items-center gap-3 overflow-hidden min-w-0">
                   <div className="text-center">
                     <h2 className="font-bold text-primary">
                       Random Wheel
