@@ -92,12 +92,13 @@ html {
     background-color: rgb(var(--color-surface));
   }
 
-  .input-field-2{
-    @apply w-full border border-church-border-2 rounded-lg px-3 py-2
-           focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
-           text-church-navy placeholder-gray-400;
-    background-color: rgb(var(--color-surface));
-  }
+  .input-field-2 {
+  @apply w-full border rounded-lg px-3 py-2
+         focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
+         text-church-navy placeholder-gray-400;
+  background-color: rgb(var(--color-surface));
+  border-color: rgb(var(--color-church-border-2));
+}
 
   .card {
     @apply rounded-xl shadow-sm border border-church-border p-4 md:p-6;
