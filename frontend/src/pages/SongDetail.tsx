@@ -1,45 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useState, useEffect, useMemo, useRef, type TouchEvent } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { fetchLineup } from '../api/lineups';
-import { fetchSong } from '../api/songs';
-import { ServiceLineup, Song, SongSection } from '../types';
+import { fetchSong, fetchSongs, getSongDocxExportUrl } from '../api/songs';
+import { Song, SongSection } from '../types';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { formatDatePH } from '../utils/csv';
 import { transposeLyrics, transposeKey, ALL_KEYS, isChordLine } from '../utils/transpose';
 
 const SWIPE_DISTANCE = 70;
 const SWIPE_VERTICAL_LIMIT = 90;
-
-function getSongLink(songId: string, key?: string | null, lineupId?: string | null) {
-  const params = new URLSearchParams();
-
-  if (key) {
-    params.set('key', key);
-  }
-
-  if (lineupId) {
-    params.set('fromLineup', lineupId);
-  }
-
-  const query = params.toString();
-
-  return `/songs/${songId}${query ? `?${query}` : ''}`;
-}
-
-function normalizeExternalLink(link?: string | null) {
-  if (!link) return '';
-
-  const trimmed = link.trim();
-
-  if (!trimmed) return '';
-
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    return trimmed;
-  }
-
-  return `https://${trimmed}`;
-}
 
 function getChordTokens(chordLine: string) {
   const tokens: { chord: string; index: number }[] = [];
@@ -56,8 +24,44 @@ function getChordTokens(chordLine: string) {
   return tokens;
 }
 
+function getLyricWords(lyricLine: string) {
+  const words: { text: string; start: number; end: number }[] = [];
+  const regex = /\S+/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(lyricLine)) !== null) {
+    words.push({
+      text: match[0],
+      start: match.index,
+      end: match.index + match[0].length,
+    });
+  }
+
+  return words;
+}
+
+function findWordIndexForChord(
+  chordIndex: number,
+  words: { text: string; start: number; end: number }[]
+) {
+  if (words.length === 0) return -1;
+
+  const insideWordIndex = words.findIndex(
+    word => chordIndex >= word.start && chordIndex <= word.end
+  );
+
+  if (insideWordIndex !== -1) return insideWordIndex;
+
+  const nextWordIndex = words.findIndex(word => word.start >= chordIndex);
+
+  if (nextWordIndex !== -1) return nextWordIndex;
+
+  return words.length - 1;
+}
+
 function renderChordOverLyric(chordLine: string, lyricLine: string, keyPrefix: string) {
   const chords = getChordTokens(chordLine);
+  const words = getLyricWords(lyricLine);
 
   if (chords.length === 0) {
     return (
@@ -67,46 +71,43 @@ function renderChordOverLyric(chordLine: string, lyricLine: string, keyPrefix: s
     );
   }
 
-  const pieces = [];
-  let cursor = 0;
-
-  chords.forEach((chord, index) => {
-    const chordPosition = Math.max(0, Math.min(chord.index, lyricLine.length));
-
-    if (chordPosition > cursor) {
-      pieces.push({
-        chord: '',
-        lyric: lyricLine.slice(cursor, chordPosition),
-      });
-      cursor = chordPosition;
-    }
-
-    const nextChordPosition =
-      index + 1 < chords.length
-        ? Math.max(chordPosition, Math.min(chords[index + 1].index, lyricLine.length))
-        : lyricLine.length;
-
-    pieces.push({
-      chord: chord.chord,
-      lyric: lyricLine.slice(cursor, nextChordPosition) || ' ',
-    });
-
-    cursor = nextChordPosition;
-  });
-
-  if (cursor < lyricLine.length) {
-    pieces.push({
-      chord: '',
-      lyric: lyricLine.slice(cursor),
-    });
+  if (words.length === 0) {
+    return (
+      <div key={keyPrefix} className="chord-only-line">
+        {chords.map((chord, index) => (
+          <span key={index} className="chord-name mr-6">
+            {chord.chord}
+          </span>
+        ))}
+      </div>
+    );
   }
 
+  const chordsByWord: Record<number, string[]> = {};
+
+  chords.forEach(chord => {
+    const wordIndex = findWordIndexForChord(chord.index, words);
+
+    if (wordIndex === -1) return;
+
+    if (!chordsByWord[wordIndex]) {
+      chordsByWord[wordIndex] = [];
+    }
+
+    chordsByWord[wordIndex].push(chord.chord);
+  });
+
   return (
-    <div key={keyPrefix} className="chord-lyric-line">
-      {pieces.map((piece, i) => (
-        <span key={i} className="chord-segment">
-          <span className="chord-name">{piece.chord || '\u00A0'}</span>
-          <span className="lyric-text">{piece.lyric || '\u00A0'}</span>
+    <div key={keyPrefix} className="chord-word-wrap-line">
+      {words.map((word, index) => (
+        <span key={`${word.text}-${index}`} className="chord-word-unit">
+          <span className="chord-name chord-word-chord">
+            {chordsByWord[index]?.join(' ') || '\u00A0'}
+          </span>
+
+          <span className="lyric-text chord-word-lyric">
+            {word.text}
+          </span>
         </span>
       ))}
     </div>
@@ -241,86 +242,88 @@ function FloatingAutoScrollControls({
   );
 }
 
-export default function LineupDetail() {
+export default function SongDetail() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
-  const [lineup, setLineup] = useState<ServiceLineup | null>(null);
+  const lineupKey = searchParams.get('key');
+
+  const fromLineup = searchParams.get('fromLineup');
+
+function handleBack() {
+  if (fromLineup) {
+    navigate(`/lineups/${fromLineup}`);
+    return;
+  }
+
+  navigate('/songs');
+}
+
+  const [song, setSong] = useState<Song | null>(null);
+  const [songList, setSongList] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [singingMode, setSingingMode] = useState(true);
-  const [activeSongIndex, setActiveSongIndex] = useState(0);
-  const [activeSongDetail, setActiveSongDetail] = useState<Song | null>(null);
-  const [loadingSong, setLoadingSong] = useState(false);
   const [currentKey, setCurrentKey] = useState('');
 
   const [autoScroll, setAutoScroll] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(35);
+  const [pendingSwipeTitle, setPendingSwipeTitle] = useState('');
 
   const lyricsRef = useRef<HTMLDivElement | null>(null);
   const shouldJumpToLyricsRef = useRef(false);
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
 
+  const currentSongIndex = useMemo(() => {
+    if (!id) return -1;
+    return songList.findIndex(item => item.id === id);
+  }, [id, songList]);
+
+  const previousSong = currentSongIndex > -1 && songList.length > 1
+    ? songList[(currentSongIndex - 1 + songList.length) % songList.length]
+    : null;
+
+  const nextSong = currentSongIndex > -1 && songList.length > 1
+    ? songList[(currentSongIndex + 1) % songList.length]
+    : null;
+
+  useEffect(() => {
+    fetchSongs()
+      .then(setSongList)
+      .catch(() => {
+        // Swipe navigation will simply be unavailable if this fails.
+      });
+  }, []);
+
   useEffect(() => {
     if (!id) return;
 
-    fetchLineup(id)
-      .then(data => {
-        setLineup(data);
-        setActiveSongIndex(0);
-      })
-      .catch(() => toast.error('Failed to load lineup'))
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  const lineupSongs = useMemo(() => {
-    if (!lineup) return [];
-
-    return lineup.sections.flatMap(section =>
-      section.songs.map((song, index) => ({
-        sectionName: section.section_name,
-        song,
-        indexInSection: index,
-      }))
-    );
-  }, [lineup]);
-
-  const activeLineupSong = lineupSongs[activeSongIndex] || null;
-
-  useEffect(() => {
-    if (!activeLineupSong) {
-      setActiveSongDetail(null);
-      return;
-    }
-
-    setLoadingSong(true);
+    setLoading(true);
     setAutoScroll(false);
 
-    fetchSong(activeLineupSong.song.song_id)
+    fetchSong(id)
       .then(data => {
-        setActiveSongDetail(data);
+        setSong(data);
+        setCurrentKey(lineupKey || data.current_key || data.original_key);
+        setPendingSwipeTitle('');
 
-        const leaderKey =
-          activeLineupSong.song.key_override ||
-          data.current_key ||
-          data.original_key;
-
-        setCurrentKey(leaderKey);
-        setLoadingSong(false);
+        setLoading(false);
 
         window.setTimeout(() => {
           if (shouldJumpToLyricsRef.current && lyricsRef.current) {
             const top = lyricsRef.current.getBoundingClientRect().top + window.scrollY - 12;
             window.scrollTo({ top, behavior: 'smooth' });
             shouldJumpToLyricsRef.current = false;
+          } else {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
           }
         }, 80);
       })
       .catch(() => {
-        toast.error('Failed to load lineup song lyrics');
-        setLoadingSong(false);
+        toast.error('Failed to load song');
+        setLoading(false);
       });
-  }, [activeLineupSong?.song.song_id, activeLineupSong?.song.key_override]);
+  }, [id, lineupKey]);
 
   useEffect(() => {
     if (!autoScroll) return;
@@ -355,49 +358,35 @@ export default function LineupDetail() {
     };
   }, [autoScroll, scrollSpeed]);
 
-  if (loading) return <LoadingSpinner label="Loading lineup..." />;
-  if (!lineup) return <p className="text-center text-gray-400 py-12">Lineup not found.</p>;
+  if (loading && pendingSwipeTitle) {
+    return (
+      <>
+        <div className="flex flex-col gap-6 max-w-2xl mx-auto">
+          <div className="card">
+            <p className="text-xs font-bold text-primary uppercase tracking-wide">
+              Loading next song
+            </p>
+            <h1 className="text-2xl font-bold text-church-navy break-words mt-1">
+              {pendingSwipeTitle}
+            </h1>
+            <div className="mt-4">
+              <LoadingSpinner label="Loading lyrics..." />
+            </div>
+          </div>
+        </div>
 
-  function goToLineupSong(direction: -1 | 1) {
-    if (lineupSongs.length === 0) return;
-
-    setAutoScroll(false);
-    shouldJumpToLyricsRef.current = true;
-
-    setActiveSongIndex(prev => {
-      const next = prev + direction;
-
-      if (next < 0) return lineupSongs.length - 1;
-      if (next >= lineupSongs.length) return 0;
-
-      return next;
-    });
+        <FloatingAutoScrollControls
+          autoScroll={autoScroll}
+          scrollSpeed={scrollSpeed}
+          setAutoScroll={setAutoScroll}
+          setScrollSpeed={setScrollSpeed}
+        />
+      </>
+    );
   }
 
-  function handleTouchStart(e: TouchEvent<HTMLDivElement>) {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  }
-
-  function handleTouchEnd(e: TouchEvent<HTMLDivElement>) {
-    if (!singingMode) return;
-
-    const endX = e.changedTouches[0].clientX;
-    const endY = e.changedTouches[0].clientY;
-
-    const diffX = endX - touchStartX.current;
-    const diffY = endY - touchStartY.current;
-
-    if (Math.abs(diffY) > SWIPE_VERTICAL_LIMIT) return;
-    if (Math.abs(diffX) < SWIPE_DISTANCE) return;
-
-    if (diffX < 0) {
-      goToLineupSong(1);
-      return;
-    }
-
-    goToLineupSong(-1);
-  }
+  if (loading) return <LoadingSpinner label="Loading song..." />;
+  if (!song) return <p className="text-center text-gray-400 py-12">Song not found.</p>;
 
   function handleTransposeUp() {
     setCurrentKey(k => transposeKey(k, 1));
@@ -408,285 +397,199 @@ export default function LineupDetail() {
   }
 
   function handleReset() {
-    if (!activeSongDetail) return;
+    setCurrentKey(song!.original_key);
+  }
 
-    const leaderKey =
-      activeLineupSong?.song.key_override ||
-      activeSongDetail.current_key ||
-      activeSongDetail.original_key;
+  function goToSong(targetSong: Song | null) {
+    if (!targetSong) return;
 
-    setCurrentKey(leaderKey);
+    setAutoScroll(false);
+    setPendingSwipeTitle(targetSong.title);
+    shouldJumpToLyricsRef.current = true;
+    navigate(`/songs/${targetSong.id}`);
+  }
+
+  function handleTouchStart(e: TouchEvent<HTMLDivElement>) {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }
+
+  function handleTouchEnd(e: TouchEvent<HTMLDivElement>) {
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+
+    const diffX = endX - touchStartX.current;
+    const diffY = endY - touchStartY.current;
+
+    if (Math.abs(diffY) > SWIPE_VERTICAL_LIMIT) return;
+    if (Math.abs(diffX) < SWIPE_DISTANCE) return;
+
+    if (diffX < 0) {
+      goToSong(nextSong);
+      return;
+    }
+
+    goToSong(previousSong);
   }
 
   return (
     <>
-      <div className="max-w-3xl mx-auto flex flex-col gap-5">
+      <div className="flex flex-col gap-6 max-w-2xl mx-auto">
+        {/* Header */}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <h1 className="text-2xl font-bold text-church-navy break-words">
-              {lineup.title}
+              {song.title}
             </h1>
 
-            <p className="text-gray-500 text-sm mt-1">
-              {formatDatePH(lineup.service_date)} · Song Leader: {lineup.song_leader}
-            </p>
-
-            {lineup.notes && (
-              <p className="text-sm text-gray-500 mt-1">
-                {lineup.notes}
+            {song.artist && (
+              <p className="text-gray-500 text-sm mt-1">
+                {song.artist}
               </p>
             )}
 
-            <div className="flex gap-2 flex-wrap mt-3">
-              <Link to="/lineups" className="btn-secondary text-xs">
-                ← Back
-              </Link>
+            {song.tags && (
+              <div className="flex gap-1 mt-2 flex-wrap">
+                {song.tags.split(',').map(t => (
+                  <span
+                    key={t}
+                    className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded"
+                  >
+                    {t.trim()}
+                  </span>
+                ))}
+              </div>
+            )}
 
-              <Link to={`/lineups/${lineup.id}/edit`} className="btn-secondary text-xs">
+            <div className="flex gap-2 flex-wrap mt-3">
+              <button type="button" onClick={handleBack} className="btn-secondary text-xs">
+            ← Back
+          </button>
+
+              <Link to={`/songs/${id}/edit`} className="btn-secondary text-xs">
                 Edit
               </Link>
 
-              <Link to={`/print/lineup/${lineup.id}`} className="btn-secondary text-xs">
+              <button onClick={() => window.print()} className="btn-secondary text-xs">
                 Print
-              </Link>
+              </button>
 
-              {lineupSongs.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSingingMode(prev => !prev)}
-                  className={singingMode ? 'btn-primary text-xs' : 'btn-secondary text-xs'}
-                >
-                  {singingMode ? 'Show Lineup List' : 'Singing Mode'}
-                </button>
-              )}
+              <a href={getSongDocxExportUrl(id!)} download className="btn-secondary text-xs">
+                Export DOCX
+              </a>
             </div>
           </div>
         </div>
 
-        {lineupSongs.length === 0 ? (
-          <div className="card">
-            <p className="text-center text-gray-400 py-6">No songs in this lineup.</p>
-          </div>
-        ) : singingMode ? (
-          <>
-            {/* Lineup song navigation */}
-            <div className="card no-print">
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => goToLineupSong(-1)}
-                  className="btn-secondary text-xs"
-                >
-                  ← Previous
-                </button>
+        {/* Swipe navigation */}
+        {songList.length > 1 && (
+          <div className="card no-print">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => goToSong(previousSong)}
+                className="btn-secondary text-xs"
+              >
+                ← Previous
+              </button>
 
-                <div className="text-center min-w-0">
-                  <p className="text-xs font-bold text-primary uppercase tracking-wide">
-                    Song {activeSongIndex + 1} of {lineupSongs.length}
-                  </p>
-                  <p className="text-[11px] text-gray-400">
-                    Swipe inside lyrics
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => goToLineupSong(1)}
-                  className="btn-secondary text-xs"
-                >
-                  Next →
-                </button>
-              </div>
-            </div>
-
-            {/* Transpose controls */}
-            {activeSongDetail && (
-              <div className="card">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="text-sm font-medium text-gray-600">Key:</span>
-                  <div className="flex items-center gap-2">
-                    <button onClick={handleTransposeDown}
-                      className="w-8 h-8 rounded-full bg-primary text-white font-bold hover:bg-primary-dark transition-colors">
-                      −
-                    </button>
-                    <span className="w-10 text-center font-bold text-lg text-primary">{currentKey}</span>
-                    <button onClick={handleTransposeUp}
-                      className="w-8 h-8 rounded-full bg-primary text-white font-bold hover:bg-primary-dark transition-colors">
-                      +
-                    </button>
-                  </div>
-
-                  <select
-                    value={currentKey}
-                    onChange={e => setCurrentKey(e.target.value)}
-                    className="input-field w-auto text-sm"
-                  >
-                    {ALL_KEYS.map(k => (
-                      <option key={k} value={k}>{k}</option>
-                    ))}
-                  </select>
-
-                  <button onClick={handleReset}
-                    className="text-xs text-gray-500 hover:text-primary underline">
-                    Reset
-                  </button>
-
-                  <span className="text-xs text-gray-400">
-                    Original: <strong>{activeSongDetail.original_key}</strong>
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Lyrics */}
-            <div
-              ref={lyricsRef}
-              className="card"
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-            >
-              {activeLineupSong && (
-                <div className="mb-5 border-b border-church-border pb-3">
-                  <span className="section-label mb-2 inline-block">
-                    {activeLineupSong.sectionName}
-                  </span>
-
-                  <p className="text-xs font-bold text-primary uppercase tracking-wide">
-                    Now Singing · Song {activeSongIndex + 1} of {lineupSongs.length}
-                  </p>
-
-                  <h2 className="text-xl font-bold text-church-navy break-words mt-1">
-                    {activeLineupSong.song.title}
-                  </h2>
-
-                  <p className="text-xs text-gray-500 mt-1">
-                    Leader Key: {currentKey || '—'}
-                    {activeLineupSong.song.artist ? ` · ${activeLineupSong.song.artist}` : ''}
-                  </p>
-
-                  {activeLineupSong.song.notes && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      {activeLineupSong.song.notes}
-                    </p>
-                  )}
-
-                  <div className="flex gap-2 flex-wrap mt-3 no-print">
-                    <Link
-                      to={getSongLink(activeLineupSong.song.song_id, currentKey, lineup.id)}
-                      className="btn-secondary text-xs"
-                    >
-                      Open Full Song
-                    </Link>
-
-                    {normalizeExternalLink(activeLineupSong.song.song_link) && (
-                      <a
-                        href={normalizeExternalLink(activeLineupSong.song.song_link)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-primary text-xs"
-                      >
-                        Attached Link
-                      </a>
-                    )}
-                  </div>
-
-                  <p className="text-[11px] text-gray-400 mt-3 no-print">
-                    Swipe left for next lineup song, right for previous song.
-                  </p>
-                </div>
-              )}
-
-              {loadingSong ? (
-                <LoadingSpinner label="Loading song lyrics..." />
-              ) : activeSongDetail ? (
-                activeSongDetail.sections.map(section => (
-                  <LyricsSection
-                    key={section.id}
-                    section={section}
-                    currentKey={currentKey}
-                    originalKey={activeSongDetail.original_key}
-                  />
-                ))
-              ) : (
-                <p className="text-center text-gray-400 py-6">
-                  Lyrics not available for this song.
+              <div className="text-center min-w-0">
+                <p className="text-xs font-bold text-primary uppercase tracking-wide">
+                  Swipe Lyrics
                 </p>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="card flex flex-col gap-5">
-            {lineup.sections.map(section => (
-              <div key={section.id}>
-                <span className="section-label mb-2 inline-block">
-                  {section.section_name}
-                </span>
-
-                <div className="flex flex-col gap-2">
-                  {section.songs.map((song, index) => {
-                    const leaderKey = song.key_override || song.current_key || song.original_key || '';
-                    const attachedLink = normalizeExternalLink(song.song_link);
-
-                    return (
-                      <div
-                        key={song.id}
-                        className="bg-church-lightblue rounded-lg p-3 flex flex-col gap-3"
-                      >
-                        <div>
-                          <Link
-                            to={getSongLink(song.song_id, leaderKey, lineup.id)}
-                            className="font-bold text-primary hover:underline text-base"
-                          >
-                            {index + 1}. {song.title}
-                          </Link>
-
-                          <p className="text-xs text-gray-500">
-                            Leader Key: {leaderKey || '—'}
-                            {song.artist ? ` · ${song.artist}` : ''}
-                          </p>
-
-                          {song.notes && (
-                            <p className="text-xs text-gray-400 mt-1">{song.notes}</p>
-                          )}
-                        </div>
-
-                        <div className="flex gap-2 flex-col sm:flex-row">
-                          <Link
-                            to={getSongLink(song.song_id, leaderKey, lineup.id)}
-                            className="btn-secondary text-xs text-center"
-                          >
-                            Open Lyrics
-                          </Link>
-
-                          {attachedLink && (
-                            <a
-                              href={attachedLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="btn-primary text-xs text-center"
-                            >
-                              Open Attached Link
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <p className="text-[11px] text-gray-400">
+                  Swipe left/right inside lyrics
+                </p>
               </div>
-            ))}
+
+              <button
+                type="button"
+                onClick={() => goToSong(nextSong)}
+                className="btn-secondary text-xs"
+              >
+                Next →
+              </button>
+            </div>
           </div>
         )}
+
+        {/* Transpose controls */}
+        <div className="card">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-sm font-medium text-gray-600">Key:</span>
+            <div className="flex items-center gap-2">
+              <button onClick={handleTransposeDown}
+                className="w-8 h-8 rounded-full bg-primary text-white font-bold hover:bg-primary-dark transition-colors">
+                −
+              </button>
+              <span className="w-10 text-center font-bold text-lg text-primary">{currentKey}</span>
+              <button onClick={handleTransposeUp}
+                className="w-8 h-8 rounded-full bg-primary text-white font-bold hover:bg-primary-dark transition-colors">
+                +
+              </button>
+            </div>
+
+            <select
+              value={currentKey}
+              onChange={e => setCurrentKey(e.target.value)}
+              className="input-field w-auto text-sm"
+            >
+              {ALL_KEYS.map(k => (
+                <option key={k} value={k}>{k}</option>
+              ))}
+            </select>
+
+            <button onClick={handleReset}
+              className="text-xs text-gray-500 hover:text-primary underline">
+              Reset ({song.original_key})
+            </button>
+
+            <span className="text-xs text-gray-400">
+              Original: <strong>{song.original_key}</strong>
+            </span>
+          </div>
+        </div>
+
+        {/* Lyrics */}
+        <div
+          ref={lyricsRef}
+          className="card"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div className="mb-5 border-b border-church-border pb-3">
+            <p className="text-xs font-bold text-primary uppercase tracking-wide">
+              Now Singing
+            </p>
+
+            <h2 className="text-xl font-bold text-church-navy break-words mt-1">
+              {song.title}
+            </h2>
+
+            {songList.length > 1 && (
+              <p className="text-[11px] text-gray-400 mt-1 no-print">
+                Swipe left for next song, right for previous song.
+              </p>
+            )}
+          </div>
+
+          {song.sections.map(s => (
+            <LyricsSection
+              key={s.id}
+              section={s}
+              currentKey={currentKey}
+              originalKey={song.original_key}
+            />
+          ))}
+        </div>
       </div>
 
-      {singingMode && lineupSongs.length > 0 && (
-        <FloatingAutoScrollControls
-          autoScroll={autoScroll}
-          scrollSpeed={scrollSpeed}
-          setAutoScroll={setAutoScroll}
-          setScrollSpeed={setScrollSpeed}
-        />
-      )}
+      <FloatingAutoScrollControls
+        autoScroll={autoScroll}
+        scrollSpeed={scrollSpeed}
+        setAutoScroll={setAutoScroll}
+        setScrollSpeed={setScrollSpeed}
+      />
     </>
   );
 }

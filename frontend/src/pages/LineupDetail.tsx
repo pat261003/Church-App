@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction, type TouchEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetchLineup } from '../api/lineups';
@@ -41,111 +41,73 @@ function normalizeExternalLink(link?: string | null) {
   return `https://${trimmed}`;
 }
 
-function getChordWrapColumnLimit() {
-  if (typeof window === 'undefined') return 64;
+function getChordTokens(chordLine: string) {
+  const tokens: { chord: string; index: number }[] = [];
+  const regex = /\S+/g;
+  let match: RegExpExecArray | null;
 
-  const width = window.innerWidth;
-
-  if (width <= 340) return 28;
-  if (width <= 380) return 32;
-  if (width <= 430) return 36;
-  if (width <= 640) return 44;
-  if (width <= 768) return 56;
-
-  return 72;
-}
-
-function isInsideChordToken(chordLine: string, index: number) {
-  const currentChar = chordLine[index] || '';
-  const previousChar = chordLine[index - 1] || '';
-
-  return /\S/.test(currentChar) && /\S/.test(previousChar);
-}
-
-function findSafeChordLineBreak(
-  lyricLine: string,
-  chordLine: string,
-  start: number,
-  maxColumns: number,
-  maxLength: number
-) {
-  const hardEnd = Math.min(start + maxColumns, maxLength);
-
-  if (hardEnd >= maxLength) return maxLength;
-
-  for (let i = hardEnd; i > start + 8; i--) {
-    if (/\s/.test(lyricLine[i] || '') && !isInsideChordToken(chordLine, i)) {
-      return i;
-    }
+  while ((match = regex.exec(chordLine)) !== null) {
+    tokens.push({
+      chord: match[0],
+      index: match.index,
+    });
   }
 
-  for (let i = hardEnd; i < maxLength; i++) {
-    if (/\s/.test(lyricLine[i] || '') && !isInsideChordToken(chordLine, i)) {
-      return i;
-    }
-  }
-
-  return maxLength;
-}
-
-function wrapChordLyricPair(chordLine: string, lyricLine: string) {
-  const maxLength = Math.max(chordLine.length, lyricLine.length);
-  const maxColumns = getChordWrapColumnLimit();
-
-  const paddedChordLine = chordLine.padEnd(maxLength, ' ');
-  const paddedLyricLine = lyricLine.padEnd(maxLength, ' ');
-
-  const chunks: { chord: string; lyric: string }[] = [];
-  let start = 0;
-
-  while (start < maxLength) {
-    const end = findSafeChordLineBreak(
-      paddedLyricLine,
-      paddedChordLine,
-      start,
-      maxColumns,
-      maxLength
-    );
-
-    const chord = paddedChordLine.slice(start, end).trimEnd();
-    const lyric = paddedLyricLine.slice(start, end).trimEnd();
-
-    if (chord || lyric) {
-      chunks.push({
-        chord,
-        lyric,
-      });
-    }
-
-    start = end;
-
-    while (
-      start < maxLength &&
-      paddedLyricLine[start] === ' ' &&
-      paddedChordLine[start] === ' '
-    ) {
-      start++;
-    }
-  }
-
-  return chunks;
+  return tokens;
 }
 
 function renderChordOverLyric(chordLine: string, lyricLine: string, keyPrefix: string) {
-  const chunks = wrapChordLyricPair(chordLine, lyricLine);
+  const chords = getChordTokens(chordLine);
+
+  if (chords.length === 0) {
+    return (
+      <div key={keyPrefix} className="lyric-only-line">
+        {lyricLine || ' '}
+      </div>
+    );
+  }
+
+  const pieces = [];
+  let cursor = 0;
+
+  chords.forEach((chord, index) => {
+    const chordPosition = Math.max(0, Math.min(chord.index, lyricLine.length));
+
+    if (chordPosition > cursor) {
+      pieces.push({
+        chord: '',
+        lyric: lyricLine.slice(cursor, chordPosition),
+      });
+      cursor = chordPosition;
+    }
+
+    const nextChordPosition =
+      index + 1 < chords.length
+        ? Math.max(chordPosition, Math.min(chords[index + 1].index, lyricLine.length))
+        : lyricLine.length;
+
+    pieces.push({
+      chord: chord.chord,
+      lyric: lyricLine.slice(cursor, nextChordPosition) || ' ',
+    });
+
+    cursor = nextChordPosition;
+  });
+
+  if (cursor < lyricLine.length) {
+    pieces.push({
+      chord: '',
+      lyric: lyricLine.slice(cursor),
+    });
+  }
 
   return (
-    <div key={keyPrefix} className="accurate-wrapped-pair">
-      {chunks.map((chunk, index) => (
-        <div key={`${keyPrefix}-${index}`} className="accurate-wrapped-chunk">
-          <div className="accurate-chord-line">
-            {chunk.chord || ' '}
-          </div>
-
-          <div className="accurate-lyric-line">
-            {chunk.lyric || ' '}
-          </div>
-        </div>
+    <div key={keyPrefix} className="chord-lyric-line">
+      {pieces.map((piece, i) => (
+        <span key={i} className="chord-segment">
+          <span className="chord-name">{piece.chord || '\u00A0'}</span>
+          <span className="lyric-text">{piece.lyric || '\u00A0'}</span>
+        </span>
       ))}
     </div>
   );
@@ -224,8 +186,8 @@ function FloatingAutoScrollControls({
 }: {
   autoScroll: boolean;
   scrollSpeed: number;
-  setAutoScroll: Dispatch<SetStateAction<boolean>>;
-  setScrollSpeed: Dispatch<SetStateAction<number>>;
+  setAutoScroll: React.Dispatch<React.SetStateAction<boolean>>;
+  setScrollSpeed: React.Dispatch<React.SetStateAction<number>>;
 }) {
   function decreaseSpeed() {
     setScrollSpeed(prev => Math.max(5, prev - 5));
