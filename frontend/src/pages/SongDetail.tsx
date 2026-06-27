@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, type TouchEvent } from 'react';
+import { useState, useEffect, useMemo, useRef, type Dispatch, type SetStateAction, type TouchEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetchSong, fetchSongs, getSongDocxExportUrl } from '../api/songs';
@@ -9,106 +9,111 @@ import { transposeLyrics, transposeKey, ALL_KEYS, isChordLine } from '../utils/t
 const SWIPE_DISTANCE = 70;
 const SWIPE_VERTICAL_LIMIT = 90;
 
-function getChordTokens(chordLine: string) {
-  const tokens: { chord: string; index: number }[] = [];
-  const regex = /\S+/g;
-  let match: RegExpExecArray | null;
+function getChordWrapColumnLimit() {
+  if (typeof window === 'undefined') return 64;
 
-  while ((match = regex.exec(chordLine)) !== null) {
-    tokens.push({
-      chord: match[0],
-      index: match.index,
-    });
-  }
+  const width = window.innerWidth;
 
-  return tokens;
+  if (width <= 340) return 28;
+  if (width <= 380) return 32;
+  if (width <= 430) return 36;
+  if (width <= 640) return 44;
+  if (width <= 768) return 56;
+
+  return 72;
 }
 
-function getLyricWords(lyricLine: string) {
-  const words: { text: string; start: number; end: number }[] = [];
-  const regex = /\S+/g;
-  let match: RegExpExecArray | null;
+function isInsideChordToken(chordLine: string, index: number) {
+  const currentChar = chordLine[index] || '';
+  const previousChar = chordLine[index - 1] || '';
 
-  while ((match = regex.exec(lyricLine)) !== null) {
-    words.push({
-      text: match[0],
-      start: match.index,
-      end: match.index + match[0].length,
-    });
-  }
-
-  return words;
+  return /\S/.test(currentChar) && /\S/.test(previousChar);
 }
 
-function findWordIndexForChord(
-  chordIndex: number,
-  words: { text: string; start: number; end: number }[]
+function findSafeChordLineBreak(
+  lyricLine: string,
+  chordLine: string,
+  start: number,
+  maxColumns: number,
+  maxLength: number
 ) {
-  if (words.length === 0) return -1;
+  const hardEnd = Math.min(start + maxColumns, maxLength);
 
-  const insideWordIndex = words.findIndex(
-    word => chordIndex >= word.start && chordIndex <= word.end
-  );
+  if (hardEnd >= maxLength) return maxLength;
 
-  if (insideWordIndex !== -1) return insideWordIndex;
+  for (let i = hardEnd; i > start + 8; i--) {
+    if (/\s/.test(lyricLine[i] || '') && !isInsideChordToken(chordLine, i)) {
+      return i;
+    }
+  }
 
-  const nextWordIndex = words.findIndex(word => word.start >= chordIndex);
+  for (let i = hardEnd; i < maxLength; i++) {
+    if (/\s/.test(lyricLine[i] || '') && !isInsideChordToken(chordLine, i)) {
+      return i;
+    }
+  }
 
-  if (nextWordIndex !== -1) return nextWordIndex;
+  return maxLength;
+}
 
-  return words.length - 1;
+function wrapChordLyricPair(chordLine: string, lyricLine: string) {
+  const maxLength = Math.max(chordLine.length, lyricLine.length);
+  const maxColumns = getChordWrapColumnLimit();
+
+  const paddedChordLine = chordLine.padEnd(maxLength, ' ');
+  const paddedLyricLine = lyricLine.padEnd(maxLength, ' ');
+
+  const chunks: { chord: string; lyric: string }[] = [];
+  let start = 0;
+
+  while (start < maxLength) {
+    const end = findSafeChordLineBreak(
+      paddedLyricLine,
+      paddedChordLine,
+      start,
+      maxColumns,
+      maxLength
+    );
+
+    const chord = paddedChordLine.slice(start, end).trimEnd();
+    const lyric = paddedLyricLine.slice(start, end).trimEnd();
+
+    if (chord || lyric) {
+      chunks.push({
+        chord,
+        lyric,
+      });
+    }
+
+    start = end;
+
+    while (
+      start < maxLength &&
+      paddedLyricLine[start] === ' ' &&
+      paddedChordLine[start] === ' '
+    ) {
+      start++;
+    }
+  }
+
+  return chunks;
 }
 
 function renderChordOverLyric(chordLine: string, lyricLine: string, keyPrefix: string) {
-  const chords = getChordTokens(chordLine);
-  const words = getLyricWords(lyricLine);
-
-  if (chords.length === 0) {
-    return (
-      <div key={keyPrefix} className="lyric-only-line">
-        {lyricLine || ' '}
-      </div>
-    );
-  }
-
-  if (words.length === 0) {
-    return (
-      <div key={keyPrefix} className="chord-only-line">
-        {chords.map((chord, index) => (
-          <span key={index} className="chord-name mr-6">
-            {chord.chord}
-          </span>
-        ))}
-      </div>
-    );
-  }
-
-  const chordsByWord: Record<number, string[]> = {};
-
-  chords.forEach(chord => {
-    const wordIndex = findWordIndexForChord(chord.index, words);
-
-    if (wordIndex === -1) return;
-
-    if (!chordsByWord[wordIndex]) {
-      chordsByWord[wordIndex] = [];
-    }
-
-    chordsByWord[wordIndex].push(chord.chord);
-  });
+  const chunks = wrapChordLyricPair(chordLine, lyricLine);
 
   return (
-    <div key={keyPrefix} className="chord-word-wrap-line">
-      {words.map((word, index) => (
-        <span key={`${word.text}-${index}`} className="chord-word-unit">
-          <span className="chord-name chord-word-chord">
-            {chordsByWord[index]?.join(' ') || '\u00A0'}
-          </span>
+    <div key={keyPrefix} className="accurate-wrapped-pair">
+      {chunks.map((chunk, index) => (
+        <div key={`${keyPrefix}-${index}`} className="accurate-wrapped-chunk">
+          <div className="accurate-chord-line">
+            {chunk.chord || ' '}
+          </div>
 
-          <span className="lyric-text chord-word-lyric">
-            {word.text}
-          </span>
-        </span>
+          <div className="accurate-lyric-line">
+            {chunk.lyric || ' '}
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -187,8 +192,8 @@ function FloatingAutoScrollControls({
 }: {
   autoScroll: boolean;
   scrollSpeed: number;
-  setAutoScroll: React.Dispatch<React.SetStateAction<boolean>>;
-  setScrollSpeed: React.Dispatch<React.SetStateAction<number>>;
+  setAutoScroll: Dispatch<SetStateAction<boolean>>;
+  setScrollSpeed: Dispatch<SetStateAction<number>>;
 }) {
   function decreaseSpeed() {
     setScrollSpeed(prev => Math.max(5, prev - 5));
@@ -248,17 +253,7 @@ export default function SongDetail() {
   const navigate = useNavigate();
 
   const lineupKey = searchParams.get('key');
-
   const fromLineup = searchParams.get('fromLineup');
-
-function handleBack() {
-  if (fromLineup) {
-    navigate(`/lineups/${fromLineup}`);
-    return;
-  }
-
-  navigate('/songs');
-}
 
   const [song, setSong] = useState<Song | null>(null);
   const [songList, setSongList] = useState<Song[]>([]);
@@ -306,7 +301,6 @@ function handleBack() {
         setSong(data);
         setCurrentKey(lineupKey || data.current_key || data.original_key);
         setPendingSwipeTitle('');
-
         setLoading(false);
 
         window.setTimeout(() => {
@@ -357,6 +351,15 @@ function handleBack() {
       window.cancelAnimationFrame(animationFrame);
     };
   }, [autoScroll, scrollSpeed]);
+
+  function handleBack() {
+    if (fromLineup) {
+      navigate(`/lineups/${fromLineup}`);
+      return;
+    }
+
+    navigate('/songs');
+  }
 
   if (loading && pendingSwipeTitle) {
     return (
@@ -463,8 +466,8 @@ function handleBack() {
 
             <div className="flex gap-2 flex-wrap mt-3">
               <button type="button" onClick={handleBack} className="btn-secondary text-xs">
-            ← Back
-          </button>
+                ← Back
+              </button>
 
               <Link to={`/songs/${id}/edit`} className="btn-secondary text-xs">
                 Edit
