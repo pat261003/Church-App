@@ -73,7 +73,7 @@ export default function SongList() {
         value={search}
         onChange={e => setSearch(e.target.value)}
         placeholder="Search by title, artist, or tag..."
-        className="input-field"
+        className="input-field-2"
       />
 
       {loading || searching ? (

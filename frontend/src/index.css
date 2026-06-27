@@ -32,6 +32,7 @@
   --color-church-blue: 250 158 188;       /* #FA9EBC */
   --color-church-lightblue: 248 243 234;  /* #F8F3EA */
   --color-church-border: 255 255 255;    
+  --color-church-border-2: 250 158 188; 
 
   --color-card: 255 219 209;              /* #FFDBD1 */
   --color-surface: 248 243 234;           /* #F8F3EA */
@@ -47,6 +48,7 @@ html[data-theme='rose'] {
   --color-church-blue: 250 158 188;
   --color-church-lightblue: 248 243 234;
   --color-church-border: 255 255 255;
+  --color-church-border-2: 250 158 188; 
 
   --color-card: 255 219 209;
   --color-surface: 248 243 234;
@@ -84,6 +86,13 @@ html {
   }
 
   .input-field {
+    @apply w-full border border-church-border rounded-lg px-3 py-2
+           focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
+           text-church-navy placeholder-gray-400;
+    background-color: rgb(var(--color-surface));
+  }
+
+  .input-field-2{
     @apply w-full border border-church-border rounded-lg px-3 py-2
            focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
            text-church-navy placeholder-gray-400;
