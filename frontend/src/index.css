@@ -31,7 +31,7 @@
   --color-church-navy: 11 25 87;          /* #0B1957 */
   --color-church-blue: 250 158 188;       /* #FA9EBC */
   --color-church-lightblue: 248 243 234;  /* #F8F3EA */
-  --color-church-border: 209 217 224;    
+  --color-church-border: 255 255 255;    
   --color-church-border-2: 250 158 188; 
 
   --color-card: 255 219 209;              /* #FFDBD1 */
@@ -47,7 +47,7 @@ html[data-theme='rose'] {
   --color-church-navy: 11 25 87;
   --color-church-blue: 250 158 188;
   --color-church-lightblue: 248 243 234;
-  --color-church-border: 209 217 224;
+  --color-church-border: 255 255 255;
   --color-church-border-2: 250 158 188; 
 
   --color-card: 255 219 209;
