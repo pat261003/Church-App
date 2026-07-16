@@ -114,17 +114,6 @@ function detectSectionHeading(line: string) {
   if (/^(outro)$/.test(lower)) return 'Outro';
   if (/^(instrumental|interlude)$/.test(lower)) return 'Instrumental';
 
-  /*
-    Short forms are only allowed when bracketed.
-
-    [V1] = Verse 1
-    [C2] = Chorus 2
-    [BR] = Bridge
-    [BR2] = Bridge 2
-
-    Plain B or C is NOT treated as Bridge or Chorus,
-    because B and C are common chords.
-  */
   if (isBracketedHeading) {
     const shortVerseMatch = lower.match(/^v\s*(\d+)$/);
     if (shortVerseMatch) return `Verse ${shortVerseMatch[1]}`;
@@ -180,15 +169,6 @@ function isLikelyChordLine(line: string) {
 }
 
 function cleanSectionContent(linesToClean: string[]) {
-  /*
-    Do not use .trim() on the joined lyrics/chords content.
-
-    .trim() removes spaces from the first chord line, for example:
-        D             G
-
-    We only remove empty lines at the start and end.
-    We keep all real chord spacing.
-  */
   let start = 0;
   let end = linesToClean.length;
 
@@ -678,7 +658,7 @@ function SectionDetectionPreview({
 function SortableSection({
   section,
   index,
-  editorMode,
+  sectionMode,
   updateSectionType,
   updateSectionContent,
   shiftSectionChordLines,
@@ -686,7 +666,7 @@ function SortableSection({
 }: {
   section: SongSection;
   index: number;
-  editorMode: EditorMode;
+  sectionMode: EditorMode;
   updateSectionType: (index: number, value: string) => void;
   updateSectionContent: (index: number, value: string) => void;
   shiftSectionChordLines: (index: number, direction: -1 | 1) => void;
@@ -707,6 +687,8 @@ function SortableSection({
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  const isEditing = sectionMode === 'edit';
 
   return (
     <div
@@ -731,20 +713,25 @@ function SortableSection({
           list="section-suggestions"
           value={section.section_type}
           onChange={e => updateSectionType(index, e.target.value)}
-          className="input-field flex-1 text-base sm:text-sm min-h-11 border border-slate-300"
+          disabled={!isEditing}
+          className={`input-field flex-1 text-base sm:text-sm min-h-11 border border-slate-300 ${
+            !isEditing ? 'opacity-80 cursor-not-allowed' : ''
+          }`}
           placeholder="Verse 1, Chorus, Bridge..."
         />
 
-        <button
-          type="button"
-          onClick={() => removeSection(index)}
-          className="text-red-500 hover:text-red-600 text-xs sm:text-sm font-semibold px-2 shrink-0"
-        >
-          Remove
-        </button>
+        {isEditing && (
+          <button
+            type="button"
+            onClick={() => removeSection(index)}
+            className="text-red-500 hover:text-red-600 text-xs sm:text-sm font-semibold px-2 shrink-0"
+          >
+            Remove
+          </button>
+        )}
       </div>
 
-      {editorMode === 'edit' ? (
+      {sectionMode === 'edit' ? (
         <>
           <textarea
             value={section.content}
@@ -773,7 +760,7 @@ Dakila sa mundo`}
           </div>
         </>
       ) : (
-        <SavedLookPreview sections={[section]} mode={editorMode} />
+        <SavedLookPreview sections={[section]} mode={sectionMode} />
       )}
     </div>
   );
@@ -789,8 +776,8 @@ export default function SongSectionsEditor({
   const [newSectionName, setNewSectionName] = useState('Verse 1');
   const [showPasteBox, setShowPasteBox] = useState(false);
   const [fullSongText, setFullSongText] = useState('');
-  const [editorMode, setEditorMode] = useState<EditorMode>('edit');
-  const [pasteMode, setPasteMode] = useState<EditorMode>('edit');
+  const [sectionMode, setSectionMode] = useState<EditorMode>('edit');
+  const [fullSongMode, setFullSongMode] = useState<EditorMode>('edit');
   const [savedDraft, setSavedDraft] = useState('');
 
   const hasExistingSongContent = sections.some(section => section.content.trim());
@@ -888,7 +875,7 @@ export default function SongSectionsEditor({
   function openFullSongEditor() {
     if (hasExistingSongContent) {
       setFullSongText(sectionsToFullSongText(sections));
-      setPasteMode('edit');
+      setFullSongMode('edit');
       setShowPasteBox(true);
       return;
     }
@@ -897,7 +884,7 @@ export default function SongSectionsEditor({
       setFullSongText(savedDraft);
     }
 
-    setPasteMode('edit');
+    setFullSongMode('edit');
     setShowPasteBox(true);
   }
 
@@ -939,7 +926,7 @@ export default function SongSectionsEditor({
     setShowPasteBox(false);
     setFullSongText('');
     setSavedDraft('');
-    setEditorMode('edit');
+    setSectionMode('edit');
 
     try {
       localStorage.removeItem(PASTE_DRAFT_KEY);
@@ -977,7 +964,7 @@ export default function SongSectionsEditor({
         <div>
           <h2 className="font-semibold text-primary">Song Sections</h2>
           <p className="text-xs text-gray-400">
-            Paste or edit the full song, preview the saved look, then save the song.
+            Edit split sections, preview the saved look, or edit the whole song in one place.
           </p>
         </div>
 
@@ -1029,9 +1016,9 @@ export default function SongSectionsEditor({
               </button>
             </div>
 
-            <ModeTabs mode={pasteMode} onChange={setPasteMode} />
+            <ModeTabs mode={fullSongMode} onChange={setFullSongMode} />
 
-            {pasteMode === 'edit' ? (
+            {fullSongMode === 'edit' ? (
               <>
                 <textarea
                   value={fullSongText}
@@ -1067,7 +1054,7 @@ Sing with me how great is our God`}
             ) : (
               <SavedLookPreview
                 sections={detectedSections}
-                mode={pasteMode}
+                mode={fullSongMode}
               />
             )}
 
@@ -1104,7 +1091,19 @@ Sing with me how great is our God`}
         </div>
       )}
 
-      <ModeTabs mode={editorMode} onChange={setEditorMode} />
+      <div className="rounded-2xl border border-slate-300 bg-white/60 p-3 flex flex-col gap-2">
+        <div>
+          <p className="text-xs font-bold text-primary uppercase tracking-wide">
+            Split Sections View
+          </p>
+
+          <p className="text-[11px] text-gray-500">
+            Edit Chords is editable. Preview and Lyrics Only show the saved look and cannot be edited.
+          </p>
+        </div>
+
+        <ModeTabs mode={sectionMode} onChange={setSectionMode} />
+      </div>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext
@@ -1117,7 +1116,7 @@ Sing with me how great is our God`}
                 key={section.client_id || section.id || index}
                 section={section}
                 index={index}
-                editorMode={editorMode}
+                sectionMode={sectionMode}
                 updateSectionType={updateSectionType}
                 updateSectionContent={updateSectionContent}
                 shiftSectionChordLines={shiftSectionChordLines}
@@ -1128,19 +1127,21 @@ Sing with me how great is our God`}
         </SortableContext>
       </DndContext>
 
-      <div className="flex gap-2 flex-col sm:flex-row">
-        <input
-          list="section-suggestions"
-          value={newSectionName}
-          onChange={e => setNewSectionName(e.target.value)}
-          className="input-field flex-1 min-w-40 text-base sm:text-sm min-h-11 border border-slate-300"
-          placeholder="Verse 1, Chorus, Bridge..."
-        />
+      {sectionMode === 'edit' && (
+        <div className="flex gap-2 flex-col sm:flex-row">
+          <input
+            list="section-suggestions"
+            value={newSectionName}
+            onChange={e => setNewSectionName(e.target.value)}
+            className="input-field flex-1 min-w-40 text-base sm:text-sm min-h-11 border border-slate-300"
+            placeholder="Verse 1, Chorus, Bridge..."
+          />
 
-        <button type="button" onClick={addSection} className="btn-secondary py-3">
-          + Add Section
-        </button>
-      </div>
+          <button type="button" onClick={addSection} className="btn-secondary py-3">
+            + Add Section
+          </button>
+        </div>
+      )}
     </div>
   );
 }
