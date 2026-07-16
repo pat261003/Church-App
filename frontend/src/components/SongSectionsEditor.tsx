@@ -88,19 +88,6 @@ function detectSectionHeading(line: string) {
 
   if (!cleaned) return null;
 
-  /*
-    This is case-insensitive because we use:
-    cleaned.toLowerCase()
-
-    So these all work:
-    Verse 1, verse 1, VERSE 1
-    Chorus, chorus, CHORUS
-    Bridge, bridge, BRIDGE
-
-    But we do NOT treat single B as Bridge or single C as Chorus,
-    because B and C are common chords.
-  */
-
   const isBracketedHeading = /^\[[^\]]+\]$/.test(trimmedLine);
 
   if (/^(intro|introduction)$/.test(lower)) return 'Intro';
@@ -128,15 +115,15 @@ function detectSectionHeading(line: string) {
   if (/^(instrumental|interlude)$/.test(lower)) return 'Instrumental';
 
   /*
-    Short forms:
-    These are safer when bracketed.
+    Short forms are only allowed when bracketed.
 
     [V1] = Verse 1
     [C2] = Chorus 2
     [BR] = Bridge
     [BR2] = Bridge 2
 
-    We do NOT allow plain B or plain C because those are chords.
+    Plain B or C is NOT treated as Bridge or Chorus,
+    because B and C are common chords.
   */
   if (isBracketedHeading) {
     const shortVerseMatch = lower.match(/^v\s*(\d+)$/);
@@ -192,20 +179,6 @@ function isLikelyChordLine(line: string) {
   return tokens.length > 0 && tokens.every(isLikelyChordToken);
 }
 
-function normalizeSongTextPreserveSpacing(text: string) {
-  const normalized = text
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/\u00A0/g, ' ')
-    .replace(/\t/g, '    ')
-    .split('\n')
-    .map(line => line.replace(/[ \t]+$/g, ''))
-    .join('\n')
-    .replace(/\n{4,}/g, '\n\n\n');
-
-  return cleanSectionContent(normalized.split('\n'));
-}
-
 function cleanSectionContent(linesToClean: string[]) {
   /*
     Do not use .trim() on the joined lyrics/chords content.
@@ -228,6 +201,20 @@ function cleanSectionContent(linesToClean: string[]) {
   }
 
   return linesToClean.slice(start, end).join('\n');
+}
+
+function normalizeSongTextPreserveSpacing(text: string) {
+  const normalized = text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\t/g, '    ')
+    .split('\n')
+    .map(line => line.replace(/[ \t]+$/g, ''))
+    .join('\n')
+    .replace(/\n{4,}/g, '\n\n\n');
+
+  return cleanSectionContent(normalized.split('\n'));
 }
 
 function getLyricsOnlyText(content: string) {
@@ -261,6 +248,17 @@ function shiftChordLines(text: string, direction: -1 | 1) {
       return line;
     })
     .join('\n');
+}
+
+function sectionsToFullSongText(sections: SongSection[]) {
+  return sections
+    .map(section => {
+      const heading = `[${section.section_type || 'Verse'}]`;
+      const content = normalizeSongTextPreserveSpacing(section.content || '');
+
+      return `${heading}\n${content}`;
+    })
+    .join('\n\n');
 }
 
 function parseFullSong(rawText: string): SongSection[] {
@@ -319,6 +317,157 @@ function parseFullSong(rawText: string): SongSection[] {
       content: fallbackContent,
     },
   ];
+}
+
+function getChordWrapColumnLimit() {
+  if (typeof window === 'undefined') return 64;
+
+  const width = window.innerWidth;
+
+  if (width <= 340) return 28;
+  if (width <= 380) return 32;
+  if (width <= 430) return 36;
+  if (width <= 640) return 44;
+  if (width <= 768) return 56;
+
+  return 72;
+}
+
+function isInsideChordToken(chordLine: string, index: number) {
+  const currentChar = chordLine[index] || '';
+  const previousChar = chordLine[index - 1] || '';
+
+  return /\S/.test(currentChar) && /\S/.test(previousChar);
+}
+
+function findSafeChordLineBreak(
+  lyricLine: string,
+  chordLine: string,
+  start: number,
+  maxColumns: number,
+  maxLength: number
+) {
+  const hardEnd = Math.min(start + maxColumns, maxLength);
+
+  if (hardEnd >= maxLength) return maxLength;
+
+  for (let i = hardEnd; i > start + 8; i--) {
+    if (/\s/.test(lyricLine[i] || '') && !isInsideChordToken(chordLine, i)) {
+      return i;
+    }
+  }
+
+  for (let i = hardEnd; i < maxLength; i++) {
+    if (/\s/.test(lyricLine[i] || '') && !isInsideChordToken(chordLine, i)) {
+      return i;
+    }
+  }
+
+  return maxLength;
+}
+
+function wrapChordLyricPair(chordLine: string, lyricLine: string) {
+  const maxLength = Math.max(chordLine.length, lyricLine.length);
+  const maxColumns = getChordWrapColumnLimit();
+
+  const paddedChordLine = chordLine.padEnd(maxLength, ' ');
+  const paddedLyricLine = lyricLine.padEnd(maxLength, ' ');
+
+  const chunks: { chord: string; lyric: string }[] = [];
+  let start = 0;
+
+  while (start < maxLength) {
+    const end = findSafeChordLineBreak(
+      paddedLyricLine,
+      paddedChordLine,
+      start,
+      maxColumns,
+      maxLength
+    );
+
+    const chord = paddedChordLine.slice(start, end).trimEnd();
+    const lyric = paddedLyricLine.slice(start, end).trimEnd();
+
+    if (chord || lyric) {
+      chunks.push({
+        chord,
+        lyric,
+      });
+    }
+
+    start = end;
+
+    while (
+      start < maxLength &&
+      paddedLyricLine[start] === ' ' &&
+      paddedChordLine[start] === ' '
+    ) {
+      start++;
+    }
+  }
+
+  return chunks;
+}
+
+function renderChordOverLyric(chordLine: string, lyricLine: string, keyPrefix: string) {
+  const chunks = wrapChordLyricPair(chordLine, lyricLine);
+
+  return (
+    <div key={keyPrefix} className="accurate-wrapped-pair">
+      {chunks.map((chunk, index) => (
+        <div key={`${keyPrefix}-${index}`} className="accurate-wrapped-chunk">
+          <div className="accurate-chord-line">
+            {chunk.chord || ' '}
+          </div>
+
+          <div className="accurate-lyric-line">
+            {chunk.lyric || ' '}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function renderSongLines(content: string) {
+  const lines = content.split('\n');
+  const rendered = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const currentLine = lines[i];
+    const nextLine = lines[i + 1];
+
+    if (
+      isLikelyChordLine(currentLine) &&
+      nextLine !== undefined &&
+      !isLikelyChordLine(nextLine)
+    ) {
+      rendered.push(renderChordOverLyric(currentLine, nextLine, `pair-${i}`));
+      i++;
+      continue;
+    }
+
+    if (isLikelyChordLine(currentLine)) {
+      rendered.push(
+        <div key={`chords-${i}`} className="chord-only-line">
+          {currentLine.trim().split(/\s+/).map((chord, chordIndex) => (
+            <span key={chordIndex} className="chord-name mr-6">
+              {chord}
+            </span>
+          ))}
+        </div>
+      );
+      continue;
+    }
+
+    rendered.push(
+      <div key={`line-${i}`} className="lyric-only-line">
+        {currentLine || ' '}
+      </div>
+    );
+  }
+
+  return rendered;
 }
 
 function CountSummary({
@@ -426,31 +575,52 @@ function ChordSpacingButtons({
   );
 }
 
-function SongPreview({
-  content,
+function SavedLookPreview({
+  sections,
   mode,
 }: {
-  content: string;
+  sections: SongSection[];
   mode: EditorMode;
 }) {
-  if (mode === 'lyrics-only') {
-    const lyricsOnly = getLyricsOnlyText(content);
-
+  if (sections.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-300 bg-church-lightblue p-4 min-h-40 whitespace-pre-wrap text-[15px] sm:text-sm leading-8 text-church-navy">
-        {lyricsOnly || (
-          <span className="text-gray-400">
-            No lyrics preview yet. Type or paste lyrics with chords first.
-          </span>
-        )}
+      <div className="rounded-xl border border-slate-300 bg-church-lightblue p-4 text-gray-400">
+        No song content yet.
       </div>
     );
   }
 
   return (
-    <pre className="rounded-xl border border-slate-300 bg-church-lightblue p-4 min-h-40 overflow-x-auto whitespace-pre-wrap font-mono text-[13px] sm:text-sm leading-7 text-church-navy">
-      {content || 'No content yet.'}
-    </pre>
+    <div className="rounded-xl border border-slate-300 bg-white p-3 sm:p-4">
+      <div className="flex flex-col gap-5">
+        {sections.map((section, index) => {
+          const content = normalizeSongTextPreserveSpacing(section.content || '');
+          const lyricsOnly = getLyricsOnlyText(content);
+
+          return (
+            <div key={section.client_id || section.id || index}>
+              <span className="section-label mb-2 inline-block">
+                {section.section_type}
+              </span>
+
+              {mode === 'lyrics-only' ? (
+                <div className="chord-lyrics-box text-[15px] sm:text-base bg-church-lightblue rounded-lg p-4 max-w-full whitespace-pre-wrap leading-8">
+                  {lyricsOnly || (
+                    <span className="text-gray-400">
+                      No lyrics found for this section.
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="chord-lyrics-box font-mono text-[12px] sm:text-sm bg-church-lightblue rounded-lg p-3 max-w-full">
+                  {renderSongLines(content)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -603,7 +773,7 @@ Dakila sa mundo`}
           </div>
         </>
       ) : (
-        <SongPreview content={section.content} mode={editorMode} />
+        <SavedLookPreview sections={[section]} mode={editorMode} />
       )}
     </div>
   );
@@ -622,6 +792,8 @@ export default function SongSectionsEditor({
   const [editorMode, setEditorMode] = useState<EditorMode>('edit');
   const [pasteMode, setPasteMode] = useState<EditorMode>('edit');
   const [savedDraft, setSavedDraft] = useState('');
+
+  const hasExistingSongContent = sections.some(section => section.content.trim());
 
   useEffect(() => {
     if (sections.some(section => !section.client_id)) {
@@ -713,6 +885,22 @@ export default function SongSectionsEditor({
     );
   }
 
+  function openFullSongEditor() {
+    if (hasExistingSongContent) {
+      setFullSongText(sectionsToFullSongText(sections));
+      setPasteMode('edit');
+      setShowPasteBox(true);
+      return;
+    }
+
+    if (!fullSongText && savedDraft) {
+      setFullSongText(savedDraft);
+    }
+
+    setPasteMode('edit');
+    setShowPasteBox(true);
+  }
+
   function handleCleanPaste() {
     const cleaned = normalizeSongTextPreserveSpacing(fullSongText);
 
@@ -759,7 +947,7 @@ export default function SongSectionsEditor({
       // Ignore localStorage errors.
     }
 
-    toast.success(`Created ${parsed.length} section${parsed.length > 1 ? 's' : ''}`);
+    toast.success(`Updated ${parsed.length} section${parsed.length > 1 ? 's' : ''}`);
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -777,8 +965,6 @@ export default function SongSectionsEditor({
     });
   }
 
-  const pasteLyricsOnlyPreview = getLyricsOnlyText(fullSongText);
-
   return (
     <div className="card flex flex-col gap-4">
       <datalist id="section-suggestions">
@@ -791,12 +977,12 @@ export default function SongSectionsEditor({
         <div>
           <h2 className="font-semibold text-primary">Song Sections</h2>
           <p className="text-xs text-gray-400">
-            Paste a full song, preview it, clean it, then auto-split it into sections.
+            Paste or edit the full song, preview the saved look, then save the song.
           </p>
         </div>
 
         <div className="flex gap-2 flex-col sm:flex-row w-full sm:w-auto">
-          {savedDraft && !fullSongText && (
+          {savedDraft && !fullSongText && !hasExistingSongContent && (
             <button
               type="button"
               onClick={handleRestoreDraft}
@@ -808,10 +994,14 @@ export default function SongSectionsEditor({
 
           <button
             type="button"
-            onClick={() => setShowPasteBox(prev => !prev)}
+            onClick={showPasteBox ? () => setShowPasteBox(false) : openFullSongEditor}
             className="btn-primary sm:btn-secondary text-sm w-full sm:w-auto py-3"
           >
-            {showPasteBox ? 'Hide Paste Box' : 'Paste Full Song'}
+            {showPasteBox
+              ? 'Hide Full Song Editor'
+              : hasExistingSongContent
+                ? 'Edit Full Song'
+                : 'Paste Full Song'}
           </button>
         </div>
       </div>
@@ -822,11 +1012,11 @@ export default function SongSectionsEditor({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="font-semibold text-church-navy text-base sm:text-sm">
-                  Paste the whole song here
+                  {hasExistingSongContent ? 'Edit the full song here' : 'Paste the whole song here'}
                 </h3>
 
                 <p className="text-xs text-gray-500">
-                  Use headings like Verse 1, Chorus, Bridge, Intro, Outro, Tag.
+                  Only the Edit Chords tab is editable. Preview and Lyrics Only are read-only.
                 </p>
               </div>
 
@@ -852,13 +1042,13 @@ export default function SongSectionsEditor({
                   autoCorrect="off"
                   placeholder={`Example:
 
-Verse 1
+[Verse 1]
     D             G
 O Diyos, Ikaw ang tunay na
    A            D
 Dakila sa mundo
 
-Chorus
+[Chorus]
 G        D
 How great is our God
 A        Bm
@@ -874,16 +1064,11 @@ Sing with me how great is our God`}
                   Draft auto-saves on this device while you type. The clean button keeps chord spacing.
                 </p>
               </>
-            ) : pasteMode === 'preview' ? (
-              <SongPreview content={fullSongText} mode="preview" />
             ) : (
-              <div className="rounded-xl border border-slate-300 bg-white p-4 min-h-[45vh] whitespace-pre-wrap text-[15px] sm:text-sm leading-8 text-church-navy overflow-y-auto">
-                {pasteLyricsOnlyPreview || (
-                  <span className="text-gray-400">
-                    Paste a song with chords first, then this will show lyrics only.
-                  </span>
-                )}
-              </div>
+              <SavedLookPreview
+                sections={detectedSections}
+                mode={pasteMode}
+              />
             )}
 
             <CountSummary content={fullSongText} />
@@ -896,7 +1081,7 @@ Sing with me how great is our God`}
                 onClick={handleAutoSplitSong}
                 className="btn-primary text-sm flex-1 py-3"
               >
-                Auto Split to Sections
+                {hasExistingSongContent ? 'Update Sections from Full Song' : 'Auto Split to Sections'}
               </button>
 
               <button
