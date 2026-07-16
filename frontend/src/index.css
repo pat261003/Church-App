@@ -316,6 +316,69 @@ html {
   box-shadow: 0 0 0 2px rgb(var(--color-primary) / 0.25);
 }
 
+/* Attendance page borders and summary cards */
+.attendance-bordered-card {
+  border: 1px solid rgb(203 213 225) !important;
+}
+
+.attendance-input-bordered {
+  border: 1px solid rgb(203 213 225) !important;
+  background-color: rgb(var(--color-surface));
+}
+
+.attendance-input-bordered:focus {
+  border-color: rgb(var(--color-primary)) !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgb(var(--color-primary) / 0.25);
+}
+
+.attendance-summary-card {
+  border: 1px solid rgb(203 213 225) !important;
+  background-color: rgb(var(--color-surface));
+  border-radius: 0.9rem;
+  padding: 0.75rem;
+}
+
+.attendance-summary-card-main {
+  border: 1px solid rgb(var(--color-primary) / 0.35) !important;
+  background-color: rgb(var(--color-primary-light));
+  border-radius: 0.9rem;
+  padding: 0.75rem;
+}
+
+.attendance-summary-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgb(107 114 128);
+}
+
+.attendance-summary-value {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: rgb(var(--color-primary));
+  line-height: 1.1;
+}
+
+.attendance-summary-sub {
+  font-size: 0.68rem;
+  color: rgb(107 114 128);
+  margin-top: 0.2rem;
+}
+
+.attendance-action-button {
+  border: 1px solid rgb(203 213 225) !important;
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background-color: rgb(var(--color-surface));
+}
+
+.attendance-action-button:hover {
+  border-color: rgb(var(--color-primary)) !important;
+  background-color: rgb(var(--color-primary-light));
+}
+
 /* Print styles */
 @media print {
   .no-print {

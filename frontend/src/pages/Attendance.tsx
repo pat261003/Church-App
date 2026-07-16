@@ -293,31 +293,77 @@ export default function Attendance() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-church-navy">Sunday Attendance</h1>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-church-navy">Sunday Attendance</h1>
 
-          <p className="text-sm text-gray-500">
-            Male: {groupCounts.male} · Female: {groupCounts.female}
-          </p>
+            <p className="text-sm text-gray-500 mt-1">
+              Adults: {groupCounts.adultTotal} · Youth: {groupCounts.youthTotal} · Kids: {groupCounts.childrenTotal}
+            </p>
 
-          <p className="text-xs text-gray-400">
-            Male Children: {groupCounts.maleChild} · Female Children: {groupCounts.femaleChild} · Male Youth: {groupCounts.maleYouth} · Female Youth: {groupCounts.femaleYouth}
-          </p>
+            <p className="text-xs text-gray-400">
+              Male: {groupCounts.male} · Female: {groupCounts.female}
+            </p>
+          </div>
+
+          <input
+            type="date"
+            value={date}
+            onChange={e => {
+              setDate(e.target.value);
+              setScheduleNotice(null);
+            }}
+            className="input-field w-auto attendance-input-bordered"
+          />
         </div>
 
-        <input
-          type="date"
-          value={date}
-          onChange={e => {
-            setDate(e.target.value);
-            setScheduleNotice(null);
-          }}
-          className="input-field w-auto"
-        />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          <div className="attendance-summary-card-main">
+            <p className="attendance-summary-label">Total</p>
+            <p className="attendance-summary-value">{records.length}</p>
+            <p className="attendance-summary-sub">Registered</p>
+          </div>
+
+          <div className="attendance-summary-card">
+            <p className="attendance-summary-label">Adults</p>
+            <p className="attendance-summary-value">{groupCounts.adultTotal}</p>
+            <p className="attendance-summary-sub">
+              M: {groupCounts.adultMale} · F: {groupCounts.adultFemale}
+            </p>
+          </div>
+
+          <div className="attendance-summary-card">
+            <p className="attendance-summary-label">Youth</p>
+            <p className="attendance-summary-value">{groupCounts.youthTotal}</p>
+            <p className="attendance-summary-sub">
+              M: {groupCounts.maleYouth} · F: {groupCounts.femaleYouth}
+            </p>
+          </div>
+
+          <div className="attendance-summary-card">
+            <p className="attendance-summary-label">Kids</p>
+            <p className="attendance-summary-value">{groupCounts.childrenTotal}</p>
+            <p className="attendance-summary-sub">
+              M: {groupCounts.maleChild} · F: {groupCounts.femaleChild}
+            </p>
+          </div>
+
+          <div className="attendance-summary-card">
+            <p className="attendance-summary-label">Male</p>
+            <p className="attendance-summary-value">{groupCounts.male}</p>
+            <p className="attendance-summary-sub">All male</p>
+          </div>
+
+          <div className="attendance-summary-card">
+            <p className="attendance-summary-label">Female</p>
+            <p className="attendance-summary-value">{groupCounts.female}</p>
+            <p className="attendance-summary-sub">All female</p>
+          </div>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="card">
+      <form onSubmit={handleSubmit} className="card attendance-bordered-card">
         <h2 className="font-semibold text-primary mb-4">Register Attendee</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -336,7 +382,7 @@ export default function Attendance() {
                   window.setTimeout(() => setNameFocused(false), 150);
                 }}
                 placeholder="Type or choose your name"
-                className="input-field"
+                className="input-field attendance-input-bordered"
                 autoComplete="name"
               />
 
@@ -347,14 +393,14 @@ export default function Attendance() {
               </datalist>
 
               {nameFocused && attendeeSuggestions.length > 0 && (
-                <div className="absolute left-0 right-0 top-full mt-1 z-40 rounded-xl border border-church-border bg-white shadow-lg overflow-hidden max-h-72 overflow-y-auto">
+                <div className="absolute left-0 right-0 top-full mt-1 z-40 rounded-xl border border-slate-300 bg-white shadow-lg overflow-hidden max-h-72 overflow-y-auto">
                   {attendeeSuggestions.map(attendee => (
                     <button
                       key={attendee.id}
                       type="button"
                       onMouseDown={e => e.preventDefault()}
                       onClick={() => applyKnownAttendee(attendee)}
-                      className="w-full text-left px-3 py-2 hover:bg-primary-light transition-colors border-b border-church-border/50 last:border-b-0"
+                      className="w-full text-left px-3 py-2 hover:bg-primary-light transition-colors border-b border-slate-200 last:border-b-0"
                     >
                       <p className="font-semibold text-church-navy text-sm">
                         {attendee.full_name}
@@ -384,7 +430,7 @@ export default function Attendance() {
               value={contact}
               onChange={e => setContact(e.target.value)}
               placeholder="Optional"
-              className="input-field"
+              className="input-field attendance-input-bordered"
               type="tel"
             />
           </div>
@@ -397,7 +443,7 @@ export default function Attendance() {
             <select
               value={ministry}
               onChange={e => setMinistry(e.target.value)}
-              className="input-field"
+              className="input-field attendance-input-bordered"
             >
               <option value="">Select group</option>
               {ATTENDANCE_GROUPS.map(group => (
@@ -417,7 +463,7 @@ export default function Attendance() {
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Optional"
-              className="input-field"
+              className="input-field attendance-input-bordered"
             />
           </div>
         </div>
@@ -428,7 +474,7 @@ export default function Attendance() {
       </form>
 
       {scheduleNotice && (
-        <div className="card border-2 border-primary/30 bg-primary-light">
+        <div className="card attendance-bordered-card border-2 border-primary/30 bg-primary-light">
           <div className="flex items-start gap-3">
             <div className="text-3xl">🔔</div>
 
@@ -445,7 +491,7 @@ export default function Attendance() {
                 {scheduleNotice.assignments.map((assignment, index) => (
                   <div
                     key={`${assignment.position}-${index}`}
-                    className="rounded-lg bg-white/70 border border-white p-3"
+                    className="rounded-lg bg-white/70 border border-slate-300 p-3"
                   >
                     <p className="font-bold text-primary">
                       {assignment.position}
@@ -477,17 +523,23 @@ export default function Attendance() {
         </div>
       )}
 
-      <div className="card">
+      <div className="card attendance-bordered-card">
         <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-          <h2 className="font-semibold text-primary">
-            {filtered.length} Attendee{filtered.length !== 1 ? 's' : ''} — {date}
-          </h2>
+          <div>
+            <h2 className="font-semibold text-primary">
+              {filtered.length} Attendee{filtered.length !== 1 ? 's' : ''} — {date}
+            </h2>
+
+            <p className="text-xs text-gray-400 mt-1">
+              Adults: {groupCounts.adultTotal} · Youth: {groupCounts.youthTotal} · Kids: {groupCounts.childrenTotal}
+            </p>
+          </div>
 
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search name or group..."
-            className="input-field w-full sm:w-64"
+            className="input-field attendance-input-bordered w-full sm:w-64"
           />
         </div>
 
@@ -502,7 +554,7 @@ export default function Attendance() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-church-border">
+                <tr className="border-b border-slate-300">
                   <th className="text-left py-2 px-3 text-gray-500 font-medium">#</th>
                   <th className="text-left py-2 px-3 text-gray-500 font-medium">Name</th>
                   <th className="text-left py-2 px-3 text-gray-500 font-medium hidden sm:table-cell">Group</th>
@@ -513,7 +565,7 @@ export default function Attendance() {
 
               <tbody>
                 {filtered.map((r, i) => (
-                  <tr key={r.id} className="border-b border-church-border/50 hover:bg-primary-light transition-colors">
+                  <tr key={r.id} className="border-b border-slate-200 hover:bg-primary-light transition-colors">
                     {editId === r.id ? (
                       <>
                         <td className="py-2 px-3 text-gray-400">{i + 1}</td>
@@ -523,7 +575,7 @@ export default function Attendance() {
                             <input
                               value={editName}
                               onChange={e => setEditName(e.target.value)}
-                              className="input-field text-xs py-1"
+                              className="input-field attendance-input-bordered text-xs py-1"
                               placeholder="Name"
                             />
 
@@ -531,14 +583,14 @@ export default function Attendance() {
                               <input
                                 value={editContact}
                                 onChange={e => setEditContact(e.target.value)}
-                                className="input-field text-xs py-1"
+                                className="input-field attendance-input-bordered text-xs py-1"
                                 placeholder="Contact"
                               />
 
                               <select
                                 value={editMinistry}
                                 onChange={e => setEditMinistry(e.target.value)}
-                                className="input-field text-xs py-1"
+                                className="input-field attendance-input-bordered text-xs py-1"
                               >
                                 <option value="">Group</option>
                                 {ATTENDANCE_GROUPS.map(group => (
@@ -552,7 +604,7 @@ export default function Attendance() {
                             <input
                               value={editNotes}
                               onChange={e => setEditNotes(e.target.value)}
-                              className="input-field text-xs py-1"
+                              className="input-field attendance-input-bordered text-xs py-1"
                               placeholder="Notes"
                             />
                           </div>
@@ -565,7 +617,7 @@ export default function Attendance() {
                             <button
                               type="button"
                               onClick={() => setEditConfirm(true)}
-                              className="text-xs bg-primary text-white px-2 py-1 rounded"
+                              className="text-xs bg-primary text-white px-2 py-1 rounded border border-primary"
                             >
                               Save
                             </button>
@@ -573,7 +625,7 @@ export default function Attendance() {
                             <button
                               type="button"
                               onClick={() => setEditId(null)}
-                              className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded"
+                              className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded border border-slate-300"
                             >
                               Cancel
                             </button>
@@ -588,7 +640,7 @@ export default function Attendance() {
                           {r.full_name}
 
                           <div className="sm:hidden mt-1">
-                            <span className="text-[11px] bg-primary-light text-primary px-2 py-0.5 rounded-full">
+                            <span className="text-[11px] bg-primary-light text-primary px-2 py-0.5 rounded-full border border-primary/20">
                               {r.ministry_group || 'No group'}
                             </span>
                           </div>
@@ -609,7 +661,7 @@ export default function Attendance() {
                             <button
                               type="button"
                               onClick={() => startEdit(r)}
-                              className="text-xs text-primary hover:underline"
+                              className="attendance-action-button text-xs text-primary hover:underline"
                             >
                               Edit
                             </button>
@@ -617,7 +669,7 @@ export default function Attendance() {
                             <button
                               type="button"
                               onClick={() => setDeleteTarget(r)}
-                              className="text-xs text-red-500 hover:underline"
+                              className="attendance-action-button text-xs text-red-500 hover:underline"
                             >
                               Delete
                             </button>
