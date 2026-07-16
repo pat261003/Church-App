@@ -82,34 +82,74 @@ function cleanHeading(line: string) {
 }
 
 function detectSectionHeading(line: string) {
+  const trimmedLine = line.trim();
   const cleaned = cleanHeading(line);
   const lower = cleaned.toLowerCase();
 
   if (!cleaned) return null;
 
+  /*
+    This is case-insensitive because we use:
+    cleaned.toLowerCase()
+
+    So these all work:
+    Verse 1, verse 1, VERSE 1
+    Chorus, chorus, CHORUS
+    Bridge, bridge, BRIDGE
+
+    But we do NOT treat single B as Bridge or single C as Chorus,
+    because B and C are common chords.
+  */
+
+  const isBracketedHeading = /^\[[^\]]+\]$/.test(trimmedLine);
+
   if (/^(intro|introduction)$/.test(lower)) return 'Intro';
 
-  const verseMatch = lower.match(/^(verse|v)\s*(\d+)?$/);
+  const verseMatch = lower.match(/^verse\s*(\d+)?$/);
   if (verseMatch) {
-    return verseMatch[2] ? `Verse ${verseMatch[2]}` : 'Verse';
+    return verseMatch[1] ? `Verse ${verseMatch[1]}` : 'Verse';
   }
 
   if (/^(pre[-\s]?chorus|pre chorus)$/.test(lower)) return 'Pre-Chorus';
 
-  const chorusMatch = lower.match(/^(chorus|refrain|c)\s*(\d+)?$/);
+  const chorusMatch = lower.match(/^(chorus|refrain)\s*(\d+)?$/);
   if (chorusMatch) {
     return chorusMatch[2] ? `Chorus ${chorusMatch[2]}` : 'Chorus';
   }
 
-  const bridgeMatch = lower.match(/^(bridge|b)\s*(\d+)?$/);
+  const bridgeMatch = lower.match(/^bridge\s*(\d+)?$/);
   if (bridgeMatch) {
-    return bridgeMatch[2] ? `Bridge ${bridgeMatch[2]}` : 'Bridge';
+    return bridgeMatch[1] ? `Bridge ${bridgeMatch[1]}` : 'Bridge';
   }
 
   if (/^(tag)$/.test(lower)) return 'Tag';
   if (/^(ending|end)$/.test(lower)) return 'Ending';
   if (/^(outro)$/.test(lower)) return 'Outro';
   if (/^(instrumental|interlude)$/.test(lower)) return 'Instrumental';
+
+  /*
+    Short forms:
+    These are safer when bracketed.
+
+    [V1] = Verse 1
+    [C2] = Chorus 2
+    [BR] = Bridge
+    [BR2] = Bridge 2
+
+    We do NOT allow plain B or plain C because those are chords.
+  */
+  if (isBracketedHeading) {
+    const shortVerseMatch = lower.match(/^v\s*(\d+)$/);
+    if (shortVerseMatch) return `Verse ${shortVerseMatch[1]}`;
+
+    const shortChorusMatch = lower.match(/^c\s*(\d+)$/);
+    if (shortChorusMatch) return `Chorus ${shortChorusMatch[1]}`;
+
+    const shortBridgeMatch = lower.match(/^br\s*(\d+)?$/);
+    if (shortBridgeMatch) {
+      return shortBridgeMatch[1] ? `Bridge ${shortBridgeMatch[1]}` : 'Bridge';
+    }
+  }
 
   return null;
 }
