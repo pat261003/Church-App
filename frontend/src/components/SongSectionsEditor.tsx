@@ -36,6 +36,8 @@ const SECTION_SUGGESTIONS = [
   'Instrumental',
 ];
 
+type EditorMode = 'with-chords' | 'lyrics-only';
+
 function makeClientId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
@@ -134,36 +136,53 @@ function uniqueSectionName(baseName: string, existingNames: string[]) {
   return nextName;
 }
 
+function isLikelyChordToken(token: string) {
+  return /^[A-G](?:#|b)?(?:m|maj|min|dim|aug|sus|add|M)?[0-9]*(?:sus[0-9])?(?:add[0-9])?(?:\/[A-G](?:#|b)?)?$/.test(token);
+}
+
+function isLikelyChordLine(line: string) {
+  const trimmed = line.trim();
+
+  if (!trimmed) return false;
+
+  const tokens = trimmed.split(/\s+/);
+
+  return tokens.length > 0 && tokens.every(isLikelyChordToken);
+}
+
+function cleanSectionContent(linesToClean: string[]) {
+  let start = 0;
+  let end = linesToClean.length;
+
+  while (start < end && linesToClean[start].trim() === '') {
+    start++;
+  }
+
+  while (end > start && linesToClean[end - 1].trim() === '') {
+    end--;
+  }
+
+  return linesToClean.slice(start, end).join('\n');
+}
+
+function getLyricsOnlyText(content: string) {
+  return content
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .filter(line => !isLikelyChordLine(line))
+    .map(line => line.replace(/\[[^\]]+\]/g, '').trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function parseFullSong(rawText: string): SongSection[] {
   const lines = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
 
   const parsedSections: SongSection[] = [];
   let currentSectionName = '';
   let currentLines: string[] = [];
-
-  function cleanSectionContent(linesToClean: string[]) {
-    /*
-      Do not use .trim() here.
-
-      .trim() removes spaces from the first chord line, for example:
-          D             G
-
-      We only remove empty lines at the start and end,
-      but we keep the spaces inside the real chord lines.
-    */
-    let start = 0;
-    let end = linesToClean.length;
-
-    while (start < end && linesToClean[start].trim() === '') {
-      start++;
-    }
-
-    while (end > start && linesToClean[end - 1].trim() === '') {
-      end--;
-    }
-
-    return linesToClean.slice(start, end).join('\n');
-  }
 
   function saveCurrentSection() {
     const content = cleanSectionContent(currentLines);
@@ -201,9 +220,7 @@ function parseFullSong(rawText: string): SongSection[] {
     return parsedSections;
   }
 
-  const fallbackContent = cleanSectionContent(
-    rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
-  );
+  const fallbackContent = cleanSectionContent(lines);
 
   if (!fallbackContent.trim()) return [];
 
@@ -220,12 +237,14 @@ function parseFullSong(rawText: string): SongSection[] {
 function SortableSection({
   section,
   index,
+  editorMode,
   updateSectionType,
   updateSectionContent,
   removeSection,
 }: {
   section: SongSection;
   index: number;
+  editorMode: EditorMode;
   updateSectionType: (index: number, value: string) => void;
   updateSectionContent: (index: number, value: string) => void;
   removeSection: (index: number) => void;
@@ -246,11 +265,13 @@ function SortableSection({
     transition,
   };
 
+  const lyricsOnlyContent = getLyricsOnlyText(section.content);
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`border border-church-border rounded-xl p-3 bg-white ${
+      className={`border border-church-border rounded-2xl p-3 sm:p-4 bg-white ${
         isDragging ? 'opacity-70 shadow-lg' : ''
       }`}
     >
@@ -259,7 +280,7 @@ function SortableSection({
           type="button"
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing px-3 py-3 rounded-lg bg-church-lightblue text-primary font-bold shrink-0"
+          className="cursor-grab active:cursor-grabbing px-3 py-3 rounded-xl bg-church-lightblue text-primary font-bold shrink-0 touch-none"
           title="Hold and drag to reorder"
         >
           ☰
@@ -269,30 +290,49 @@ function SortableSection({
           list="section-suggestions"
           value={section.section_type}
           onChange={e => updateSectionType(index, e.target.value)}
-          className="input-field flex-1 text-base sm:text-sm"
+          className="input-field flex-1 text-base sm:text-sm min-h-11"
           placeholder="Verse 1, Chorus, Bridge..."
         />
 
         <button
           type="button"
           onClick={() => removeSection(index)}
-          className="text-red-400 hover:text-red-600 text-sm font-semibold px-2 shrink-0"
+          className="text-red-500 hover:text-red-600 text-xs sm:text-sm font-semibold px-2 shrink-0"
         >
           Remove
         </button>
       </div>
 
-      <textarea
-        value={section.content}
-        onChange={e => updateSectionContent(index, e.target.value)}
-        className="input-field min-h-52 sm:min-h-40 font-mono text-base sm:text-sm resize-y leading-7"
-        placeholder={`Example:
+      {editorMode === 'with-chords' ? (
+        <>
+          <textarea
+            value={section.content}
+            onChange={e => updateSectionContent(index, e.target.value)}
+            className="input-field min-h-[45vh] sm:min-h-44 font-mono text-[15px] sm:text-sm resize-y leading-7 p-3"
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+            placeholder={`Example:
 
 G        C
 Amazing grace how sweet the sound
 G        D
 That saved a wretch like me`}
-      />
+          />
+
+          <p className="text-[11px] text-gray-400 mt-2">
+            Tip: Keep the spaces before chords. Do not remove spaces before the first chord.
+          </p>
+        </>
+      ) : (
+        <div className="rounded-xl bg-church-lightblue p-4 min-h-40 whitespace-pre-wrap text-[15px] sm:text-sm leading-8 text-church-navy">
+          {lyricsOnlyContent || (
+            <span className="text-gray-400">
+              No lyrics preview yet. Type or paste lyrics with chords first.
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -307,6 +347,8 @@ export default function SongSectionsEditor({
   const [newSectionName, setNewSectionName] = useState('Verse 1');
   const [showPasteBox, setShowPasteBox] = useState(false);
   const [fullSongText, setFullSongText] = useState('');
+  const [editorMode, setEditorMode] = useState<EditorMode>('with-chords');
+  const [pasteMode, setPasteMode] = useState<EditorMode>('with-chords');
 
   useEffect(() => {
     if (sections.some(section => !section.client_id)) {
@@ -373,6 +415,7 @@ export default function SongSectionsEditor({
     setSections(parsed);
     setShowPasteBox(false);
     setFullSongText('');
+    setEditorMode('with-chords');
     toast.success(`Created ${parsed.length} section${parsed.length > 1 ? 's' : ''}`);
   }
 
@@ -391,6 +434,8 @@ export default function SongSectionsEditor({
     });
   }
 
+  const pasteLyricsOnlyPreview = getLyricsOnlyText(fullSongText);
+
   return (
     <div className="card flex flex-col gap-4">
       <datalist id="section-suggestions">
@@ -403,21 +448,21 @@ export default function SongSectionsEditor({
         <div>
           <h2 className="font-semibold text-primary">Song Sections</h2>
           <p className="text-xs text-gray-400">
-            Add sections manually or paste a full song and auto-split it.
+            Paste a full song, split it into sections, then preview with chords or lyrics only.
           </p>
         </div>
 
         <button
           type="button"
           onClick={() => setShowPasteBox(prev => !prev)}
-          className="btn-primary sm:btn-secondary text-sm w-full sm:w-auto"
+          className="btn-primary sm:btn-secondary text-sm w-full sm:w-auto py-3"
         >
           {showPasteBox ? 'Hide Paste Box' : 'Paste Full Song'}
         </button>
       </div>
 
       {showPasteBox && (
-        <div className="border border-primary/20 bg-primary-light rounded-xl p-3 flex flex-col gap-3">
+        <div className="border border-primary/20 bg-primary-light rounded-2xl p-3 sm:p-4 flex flex-col gap-3">
           <div>
             <h3 className="font-semibold text-church-navy text-sm">
               Paste the whole song here
@@ -427,30 +472,67 @@ export default function SongSectionsEditor({
             </p>
           </div>
 
-          <textarea
-            value={fullSongText}
-            onChange={e => setFullSongText(e.target.value)}
-            className="input-field min-h-[55vh] sm:min-h-64 font-mono text-base sm:text-sm resize-y bg-white leading-7"
-            placeholder={`Example:
+          <div className="grid grid-cols-2 gap-2 bg-white/70 rounded-xl p-1">
+            <button
+              type="button"
+              onClick={() => setPasteMode('with-chords')}
+              className={`rounded-lg py-2 text-xs font-bold ${
+                pasteMode === 'with-chords'
+                  ? 'bg-primary text-white'
+                  : 'text-primary hover:bg-primary-light'
+              }`}
+            >
+              With Chords
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPasteMode('lyrics-only')}
+              className={`rounded-lg py-2 text-xs font-bold ${
+                pasteMode === 'lyrics-only'
+                  ? 'bg-primary text-white'
+                  : 'text-primary hover:bg-primary-light'
+              }`}
+            >
+              Lyrics Only Preview
+            </button>
+          </div>
+
+          {pasteMode === 'with-chords' ? (
+            <textarea
+              value={fullSongText}
+              onChange={e => setFullSongText(e.target.value)}
+              className="input-field min-h-[62vh] sm:min-h-72 font-mono text-[15px] sm:text-sm resize-y bg-white leading-7 p-3"
+              spellCheck={false}
+              autoCapitalize="off"
+              autoCorrect="off"
+              placeholder={`Example:
 
 Verse 1
-G        C
-Amazing grace how sweet the sound
-G        D
-That saved a wretch like me
+    D             G
+O Diyos, Ikaw ang tunay na
+   A            D
+Dakila sa mundo
 
 Chorus
-C        G
-How great is our God
-D        Em
-Sing with me how great is our God
-
-Bridge
-Em       C
-Name above all names
 G        D
-Worthy of all praise`}
-          />
+How great is our God
+A        Bm
+Sing with me how great is our God`}
+            />
+          ) : (
+            <div className="rounded-xl bg-white p-4 min-h-[45vh] whitespace-pre-wrap text-[15px] sm:text-sm leading-8 text-church-navy overflow-y-auto">
+              {pasteLyricsOnlyPreview || (
+                <span className="text-gray-400">
+                  Paste a song with chords first, then this will show lyrics only.
+                </span>
+              )}
+            </div>
+          )}
+
+          <p className="text-[11px] text-gray-500">
+            The lyrics-only preview does not delete your chords. It only hides chord lines for easier reading.
+          </p>
 
           <div className="sticky bottom-24 sm:static bg-primary-light pt-2 flex gap-2 flex-col sm:flex-row">
             <button
@@ -472,6 +554,32 @@ Worthy of all praise`}
         </div>
       )}
 
+      <div className="grid grid-cols-2 gap-2 bg-church-lightblue rounded-xl p-1">
+        <button
+          type="button"
+          onClick={() => setEditorMode('with-chords')}
+          className={`rounded-lg py-2.5 text-xs font-bold ${
+            editorMode === 'with-chords'
+              ? 'bg-primary text-white'
+              : 'text-primary hover:bg-primary-light'
+          }`}
+        >
+          Edit With Chords
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setEditorMode('lyrics-only')}
+          className={`rounded-lg py-2.5 text-xs font-bold ${
+            editorMode === 'lyrics-only'
+              ? 'bg-primary text-white'
+              : 'text-primary hover:bg-primary-light'
+          }`}
+        >
+          Lyrics Only Preview
+        </button>
+      </div>
+
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext
           items={sections.map(section => section.client_id || section.id || '')}
@@ -483,6 +591,7 @@ Worthy of all praise`}
                 key={section.client_id || section.id || index}
                 section={section}
                 index={index}
+                editorMode={editorMode}
                 updateSectionType={updateSectionType}
                 updateSectionContent={updateSectionContent}
                 removeSection={removeSection}
@@ -497,7 +606,7 @@ Worthy of all praise`}
           list="section-suggestions"
           value={newSectionName}
           onChange={e => setNewSectionName(e.target.value)}
-          className="input-field flex-1 min-w-40 text-base sm:text-sm"
+          className="input-field flex-1 min-w-40 text-base sm:text-sm min-h-11"
           placeholder="Verse 1, Chorus, Bridge..."
         />
 

@@ -160,14 +160,66 @@ function renderSongLines(content: string) {
   return rendered;
 }
 
+type LyricsDisplayMode = 'chords' | 'lyrics';
+
+function renderLyricsOnlyLines(content: string) {
+  return content
+    .split('\n')
+    .filter(line => !isChordLine(line))
+    .map(line => line.replace(/\[[^\]]+\]/g, '').trim())
+    .map((line, index) => (
+      <div key={`lyrics-only-${index}`} className="lyric-only-line text-base leading-8">
+        {line || ' '}
+      </div>
+    ));
+}
+
+function LyricsViewTabs({
+  mode,
+  onChange,
+}: {
+  mode: LyricsDisplayMode;
+  onChange: (mode: LyricsDisplayMode) => void;
+}) {
+  return (
+    <div className="no-print grid grid-cols-2 gap-2 bg-church-lightblue rounded-xl p-1 mb-4">
+      <button
+        type="button"
+        onClick={() => onChange('chords')}
+        className={`rounded-lg py-2.5 text-xs font-bold ${
+          mode === 'chords'
+            ? 'bg-primary text-white'
+            : 'text-primary hover:bg-primary-light'
+        }`}
+      >
+        With Chords
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onChange('lyrics')}
+        className={`rounded-lg py-2.5 text-xs font-bold ${
+          mode === 'lyrics'
+            ? 'bg-primary text-white'
+            : 'text-primary hover:bg-primary-light'
+        }`}
+      >
+        Lyrics Only
+      </button>
+    </div>
+  );
+}
+
 function LyricsSection({
   section,
   currentKey,
   originalKey,
+  displayMode,
 }: {
   section: SongSection;
   currentKey: string;
   originalKey: string;
+  displayMode: LyricsDisplayMode;
 }) {
   const content = transposeLyrics(section.content, originalKey, currentKey);
 
@@ -177,8 +229,16 @@ function LyricsSection({
         {section.section_type}
       </span>
 
-      <div className="chord-lyrics-box font-mono text-[12px] sm:text-sm bg-church-lightblue rounded-lg p-3 max-w-full">
-        {renderSongLines(content)}
+      <div
+        className={
+          displayMode === 'chords'
+            ? 'chord-lyrics-box font-mono text-[12px] sm:text-sm bg-church-lightblue rounded-lg p-3 max-w-full'
+            : 'chord-lyrics-box text-[15px] sm:text-base bg-church-lightblue rounded-lg p-4 max-w-full'
+        }
+      >
+        {displayMode === 'chords'
+          ? renderSongLines(content)
+          : renderLyricsOnlyLines(content)}
       </div>
     </div>
   );
@@ -263,6 +323,7 @@ export default function SongDetail() {
   const [autoScroll, setAutoScroll] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(35);
   const [pendingSwipeTitle, setPendingSwipeTitle] = useState('');
+  const [lyricsDisplayMode, setLyricsDisplayMode] = useState<LyricsDisplayMode>('chords');
 
   const lyricsRef = useRef<HTMLDivElement | null>(null);
   const shouldJumpToLyricsRef = useRef(false);
@@ -575,6 +636,11 @@ export default function SongDetail() {
               </p>
             )}
           </div>
+          
+          <LyricsViewTabs
+            mode={lyricsDisplayMode}
+            onChange={setLyricsDisplayMode}
+          />
 
           {song.sections.map(s => (
             <LyricsSection
@@ -582,6 +648,7 @@ export default function SongDetail() {
               section={s}
               currentKey={currentKey}
               originalKey={song.original_key}
+              displayMode={lyricsDisplayMode}
             />
           ))}
         </div>

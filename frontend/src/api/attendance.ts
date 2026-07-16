@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { AttendanceRecord, AttendanceStats } from '../types';
+import type { AttendancePrintGroup } from '../utils/attendanceGroups';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 
@@ -14,6 +15,16 @@ export type ScheduleAssignmentNotice = {
   notes?: string | null;
 };
 
+export type KnownAttendee = {
+  id: string;
+  normalized_name: string;
+  full_name: string;
+  contact_number?: string | null;
+  ministry_group?: string | null;
+  notes?: string | null;
+  entered_at?: string;
+};
+
 // Keep Render from cold-starting: ping on load
 export const pingServer = () =>
   api.get('/health').catch(() => {});
@@ -26,6 +37,9 @@ export const fetchMonthAttendance = (month: number, year: number) =>
 
 export const fetchStats = (date: string) =>
   api.get<AttendanceStats>(`/api/attendance/stats?date=${date}`).then(r => r.data);
+
+export const fetchKnownAttendees = () =>
+  api.get<KnownAttendee[]>('/api/attendance/people').then(r => r.data);
 
 export const addAttendance = (data: {
   full_name: string;
@@ -59,4 +73,16 @@ export const getCSVUrl = (date?: string, month?: number, year?: number): string 
 export const getXLSXUrl = (date?: string, month?: number, year?: number): string => {
   if (date) return `${BASE}/api/attendance/export/xlsx?date=${date}`;
   return `${BASE}/api/attendance/export/xlsx?month=${month}&year=${year}`;
+};
+
+export const getPrintAttendanceUrl = (
+  date: string,
+  group: AttendancePrintGroup = 'all'
+): string => {
+  const params = new URLSearchParams();
+
+  params.set('date', date);
+  params.set('group', group);
+
+  return `/print/attendance?${params.toString()}`;
 };

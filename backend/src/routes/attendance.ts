@@ -129,6 +129,41 @@ router.get('/stats', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/attendance/people
+router.get('/people', async (_req: Request, res: Response) => {
+  try {
+    await deleteOldAttendanceRecords();
+
+    const result = await query(
+      `
+      WITH latest_people AS (
+        SELECT DISTINCT ON (normalized_name)
+          id,
+          normalized_name,
+          full_name,
+          contact_number,
+          ministry_group,
+          notes,
+          entered_at
+        FROM attendance
+        WHERE normalized_name IS NOT NULL
+          AND TRIM(normalized_name) != ''
+        ORDER BY normalized_name, entered_at DESC
+      )
+      SELECT *
+      FROM latest_people
+      ORDER BY full_name ASC
+      LIMIT 500
+      `
+    );
+
+    return res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to fetch previous attendees' });
+  }
+});
+
 // GET /api/attendance/export/csv?date=YYYY-MM-DD or ?month=MM&year=YYYY
 router.get('/export/csv', async (req: Request, res: Response) => {
   try {

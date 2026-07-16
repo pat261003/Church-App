@@ -2,10 +2,12 @@ import { useState, useEffect, type FormEvent } from 'react';
 import toast from 'react-hot-toast';
 import {
   fetchAttendance,
+  fetchKnownAttendees,
   addAttendance,
   checkScheduleAssignments,
   updateAttendance,
   deleteAttendance,
+  type KnownAttendee,
   type ScheduleAssignmentNotice,
 } from '../api/attendance';
 import { AttendanceRecord } from '../types';
@@ -44,10 +46,16 @@ export default function Attendance() {
   const [editConfirm, setEditConfirm] = useState(false);
 
   const [scheduleNotice, setScheduleNotice] = useState<ScheduleNoticeState | null>(null);
+  const [knownAttendees, setKnownAttendees] = useState<KnownAttendee[]>([]);
+  const [nameFocused, setNameFocused] = useState(false);
 
   useEffect(() => {
     loadRecords();
   }, [date]);
+
+  useEffect(() => {
+    loadKnownAttendees();
+  }, []);
 
   async function loadRecords() {
     setLoading(true);
@@ -59,6 +67,54 @@ export default function Attendance() {
       toast.error('Failed to load attendance');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadKnownAttendees() {
+    try {
+      const data = await fetchKnownAttendees();
+      setKnownAttendees(data);
+    } catch {
+      /*
+        Do not block the attendance page if previous attendee suggestions fail.
+      */
+    }
+  }
+
+  function normalizeText(value: string) {
+    return value.trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  function applyKnownAttendee(attendee: KnownAttendee) {
+    setFullName(attendee.full_name);
+
+    if (attendee.contact_number) {
+      setContact(attendee.contact_number);
+    }
+
+    if (attendee.ministry_group) {
+      setMinistry(attendee.ministry_group);
+    }
+
+    setNameFocused(false);
+  }
+
+  function handleFullNameChange(value: string) {
+    setFullName(value);
+    setNameFocused(true);
+
+    const match = knownAttendees.find(
+      attendee => normalizeText(attendee.full_name) === normalizeText(value)
+    );
+
+    if (!match) return;
+
+    if (match.contact_number) {
+      setContact(match.contact_number);
+    }
+
+    if (match.ministry_group) {
+      setMinistry(match.ministry_group);
     }
   }
 
@@ -111,10 +167,33 @@ export default function Attendance() {
       });
 
       setRecords(prev => [...prev, record]);
+
+      setKnownAttendees(prev => {
+        const normalizedRecordName = normalizeText(record.full_name);
+
+        const withoutSameName = prev.filter(
+          attendee => normalizeText(attendee.full_name) !== normalizedRecordName
+        );
+
+        return [
+          {
+            id: record.id,
+            normalized_name: normalizedRecordName,
+            full_name: record.full_name,
+            contact_number: record.contact_number || null,
+            ministry_group: record.ministry_group || null,
+            notes: record.notes || null,
+            entered_at: record.entered_at,
+          },
+          ...withoutSameName,
+        ].sort((a, b) => a.full_name.localeCompare(b.full_name));
+      });
+
       setFullName('');
       setContact('');
       setMinistry('');
       setNotes('');
+      setNameFocused(false);
 
       toast.success(`${record.full_name} registered at ${formatTimePH(record.entered_at)}`);
 
@@ -150,6 +229,28 @@ export default function Attendance() {
       });
 
       setRecords(prev => prev.map(r => r.id === editId ? updated : r));
+
+      setKnownAttendees(prev => {
+        const normalizedUpdatedName = normalizeText(updated.full_name);
+
+        const withoutSameName = prev.filter(
+          attendee => normalizeText(attendee.full_name) !== normalizedUpdatedName
+        );
+
+        return [
+          {
+            id: updated.id,
+            normalized_name: normalizedUpdatedName,
+            full_name: updated.full_name,
+            contact_number: updated.contact_number || null,
+            ministry_group: updated.ministry_group || null,
+            notes: updated.notes || null,
+            entered_at: updated.entered_at,
+          },
+          ...withoutSameName,
+        ].sort((a, b) => a.full_name.localeCompare(b.full_name));
+      });
+
       setEditId(null);
       toast.success('Updated successfully');
     } catch (err: unknown) {
@@ -176,6 +277,17 @@ export default function Attendance() {
     r.full_name.toLowerCase().includes(search.toLowerCase()) ||
     (r.ministry_group || '').toLowerCase().includes(search.toLowerCase())
   );
+
+  const attendeeSuggestions = knownAttendees
+    .filter(attendee => {
+      const typedName = normalizeText(fullName);
+      const attendeeName = normalizeText(attendee.full_name);
+
+      if (!typedName) return true;
+
+      return attendeeName.includes(typedName);
+    })
+    .slice(0, 8);
 
   const groupCounts = getAttendanceGroupCounts(records);
 
@@ -214,13 +326,53 @@ export default function Attendance() {
               Full Name <span className="text-red-500">*</span>
             </label>
 
-            <input
-              value={fullName}
-              onChange={e => setFullName(e.target.value)}
-              placeholder="e.g. Juan Dela Cruz"
-              className="input-field"
-              autoComplete="name"
-            />
+            <div className="relative">
+              <input
+                list="known-attendee-names"
+                value={fullName}
+                onChange={e => handleFullNameChange(e.target.value)}
+                onFocus={() => setNameFocused(true)}
+                onBlur={() => {
+                  window.setTimeout(() => setNameFocused(false), 150);
+                }}
+                placeholder="Type or choose your name"
+                className="input-field"
+                autoComplete="name"
+              />
+
+              <datalist id="known-attendee-names">
+                {knownAttendees.map(attendee => (
+                  <option key={attendee.id} value={attendee.full_name} />
+                ))}
+              </datalist>
+
+              {nameFocused && attendeeSuggestions.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-40 rounded-xl border border-church-border bg-white shadow-lg overflow-hidden max-h-72 overflow-y-auto">
+                  {attendeeSuggestions.map(attendee => (
+                    <button
+                      key={attendee.id}
+                      type="button"
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => applyKnownAttendee(attendee)}
+                      className="w-full text-left px-3 py-2 hover:bg-primary-light transition-colors border-b border-church-border/50 last:border-b-0"
+                    >
+                      <p className="font-semibold text-church-navy text-sm">
+                        {attendee.full_name}
+                      </p>
+
+                      <p className="text-[11px] text-gray-400">
+                        {attendee.ministry_group || 'No group saved'}
+                        {attendee.contact_number ? ` · ${attendee.contact_number}` : ''}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <p className="text-[11px] text-gray-400 mt-1">
+              Start typing and tap your name if you already attended before.
+            </p>
           </div>
 
           <div>

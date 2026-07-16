@@ -1,105 +1,161 @@
-import { useEffect, useState, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { fetchAttendance } from '../api/attendance';
 import { AttendanceRecord } from '../types';
-import { formatTimePH, formatDatePH } from '../utils/csv';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { formatDatePH, formatTimePH, getTodayDate } from '../utils/csv';
+import {
+  ATTENDANCE_PRINT_GROUPS,
+  filterAttendanceByPrintGroup,
+  getAttendanceGroupCounts,
+  getAttendancePrintGroupLabel,
+  normalizeAttendancePrintGroup,
+  type AttendancePrintGroup,
+} from '../utils/attendanceGroups';
 
 export default function PrintAttendance() {
-  const [params] = useSearchParams();
-  const date = params.get('date') || '';
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const date = searchParams.get('date') || getTodayDate();
+  const group = normalizeAttendancePrintGroup(searchParams.get('group'));
+
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const printed = useRef(false);
 
   useEffect(() => {
-    if (!date) return;
+    setLoading(true);
+
     fetchAttendance(date)
-      .then(data => {
-        setRecords(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      .then(setRecords)
+      .catch(() => toast.error('Failed to load attendance for printing'))
+      .finally(() => setLoading(false));
   }, [date]);
 
-  useEffect(() => {
-    if (!loading && records.length > 0 && !printed.current) {
-      printed.current = true;
-      setTimeout(() => window.print(), 400);
-    }
-  }, [loading, records]);
+  const printableRecords = useMemo(
+    () => filterAttendanceByPrintGroup(records, group),
+    [records, group]
+  );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-gray-500">Preparing print view...</p>
-      </div>
-    );
+  const counts = getAttendanceGroupCounts(printableRecords);
+
+  function updateGroup(nextGroup: AttendancePrintGroup) {
+    const params = new URLSearchParams(searchParams);
+
+    params.set('date', date);
+    params.set('group', nextGroup);
+
+    setSearchParams(params);
   }
 
+  if (loading) return <LoadingSpinner label="Loading print view..." />;
+
   return (
-    <div className="p-8 max-w-3xl mx-auto font-sans">
-      {/* Header */}
-      <div className="text-center mb-8 border-b-2 border-gray-300 pb-4">
-        <div className="flex items-center justify-center gap-3 mb-2">
-          <img src="/logo.png" alt="FGFTI" className="h-14 w-14 rounded-full" />
-          <div className="text-left">
-            <h1 className="text-xl font-bold text-gray-900">
-              Full Gospel Faith Temple Inc.
-            </h1>
-            <p className="text-sm text-gray-500">Church Attendance Record · Est. 1967</p>
-          </div>
+    <div className="max-w-4xl mx-auto bg-white text-black p-4 sm:p-8 print:p-0">
+      <div className="no-print mb-6 flex flex-wrap gap-2 items-end justify-between">
+        <div>
+          <label className="text-xs text-gray-500 block mb-1">
+            Print Group
+          </label>
+
+          <select
+            value={group}
+            onChange={e => updateGroup(e.target.value as AttendancePrintGroup)}
+            className="input-field w-full sm:w-auto"
+          >
+            {ATTENDANCE_PRINT_GROUPS.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
-        <h2 className="text-lg font-semibold text-gray-700 mt-3">
-          Sunday Attendance — {formatDatePH(date)}
-        </h2>
-        <p className="text-sm text-gray-500">Total Attendees: {records.length}</p>
+
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={() => window.print()} className="btn-primary">
+            Print / Save as PDF
+          </button>
+
+          <Link to="/attendance/dashboard" className="btn-secondary">
+            Back to Dashboard
+          </Link>
+        </div>
       </div>
 
-      {/* Table */}
-      <table className="w-full text-sm border-collapse">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border border-gray-300 px-3 py-2 text-left">#</th>
-            <th className="border border-gray-300 px-3 py-2 text-left">Full Name</th>
-            <th className="border border-gray-300 px-3 py-2 text-left">Age/Gender Group</th>
-            <th className="border border-gray-300 px-3 py-2 text-left">Time Entered</th>
-            <th className="border border-gray-300 px-3 py-2 text-left">Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          {records.map((r, i) => (
-            <tr key={r.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-              <td className="border border-gray-300 px-3 py-2 text-gray-500">{i + 1}</td>
-              <td className="border border-gray-300 px-3 py-2 font-medium">{r.full_name}</td>
-              <td className="border border-gray-300 px-3 py-2 text-gray-600">
-                {r.ministry_group || '—'}
-              </td>
-              <td className="border border-gray-300 px-3 py-2 text-gray-600">
-                {formatTimePH(r.entered_at)}
-              </td>
-              <td className="border border-gray-300 px-3 py-2 text-gray-600">
-                {r.notes || '—'}
-              </td>
+      <div className="text-center border-b border-gray-300 pb-4 mb-4">
+        <h1 className="text-2xl font-bold">Attendance List</h1>
+
+        <p className="text-sm mt-1">
+          {formatDatePH(date)}
+        </p>
+
+        <p className="text-sm font-bold mt-1">
+          {getAttendancePrintGroupLabel(group)}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm mb-4">
+        <div className="border border-gray-300 rounded p-2">
+          <p className="text-gray-500">Total</p>
+          <p className="font-bold text-lg">{printableRecords.length}</p>
+        </div>
+
+        <div className="border border-gray-300 rounded p-2">
+          <p className="text-gray-500">Adults</p>
+          <p className="font-bold text-lg">{counts.adultTotal}</p>
+        </div>
+
+        <div className="border border-gray-300 rounded p-2">
+          <p className="text-gray-500">Youth</p>
+          <p className="font-bold text-lg">{counts.youthTotal}</p>
+        </div>
+
+        <div className="border border-gray-300 rounded p-2">
+          <p className="text-gray-500">Kids</p>
+          <p className="font-bold text-lg">{counts.childrenTotal}</p>
+        </div>
+      </div>
+
+      {printableRecords.length === 0 ? (
+        <p className="text-center text-gray-500 py-8">
+          No attendance found for this print option.
+        </p>
+      ) : (
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr>
+              <th className="border border-gray-300 text-left p-2 w-12">#</th>
+              <th className="border border-gray-300 text-left p-2">Name</th>
+              <th className="border border-gray-300 text-left p-2">Group</th>
+              <th className="border border-gray-300 text-left p-2">Time</th>
+              <th className="border border-gray-300 text-left p-2">Notes</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
 
-      {/* Footer */}
-      <div className="mt-8 pt-4 border-t border-gray-300 flex justify-between text-xs text-gray-400">
-        <span>Full Gospel Faith Temple Inc.</span>
-        <span>Printed: {new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</span>
-      </div>
+          <tbody>
+            {printableRecords.map((record, index) => (
+              <tr key={record.id}>
+                <td className="border border-gray-300 p-2">{index + 1}</td>
+                <td className="border border-gray-300 p-2 font-medium">
+                  {record.full_name}
+                </td>
+                <td className="border border-gray-300 p-2">
+                  {record.ministry_group || '—'}
+                </td>
+                <td className="border border-gray-300 p-2">
+                  {formatTimePH(record.entered_at)}
+                </td>
+                <td className="border border-gray-300 p-2">
+                  {record.notes || ''}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
-      {/* Print button (hidden when printing) */}
-      <div className="no-print mt-6 flex gap-3 justify-center flex-col sm:flex-row">
-        <button onClick={() => window.print()} className="btn-primary">
-          Print / Save as PDF
-        </button>
-
-        <button onClick={() => window.history.back()} className="btn-secondary">
-          Back
-        </button>
+      <div className="mt-8 text-xs text-gray-500">
+        Printed: {new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}
       </div>
     </div>
   );
