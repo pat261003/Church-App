@@ -69,11 +69,6 @@ export default function SongList() {
         <Link to="/songs/add" className="btn-primary text-sm">+ Add Song</Link>
       </div>
 
-      <div className="card">
-        <a href="/lyrics-preview.html#/songs" className="btn-secondary text-sm">Try lyrics preview</a>
-        <p className="text-sm text-gray-500 mt-2">Test opening songs, fullscreen, and returning to Songs or Lineups with sample songs. Works while the server is unavailable.</p>
-      </div>
-
       <input
         value={search}
         onChange={e => setSearch(e.target.value)}
