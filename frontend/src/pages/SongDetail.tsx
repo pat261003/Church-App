@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { fetchSong, fetchSongs, getSongDocxExportUrl } from '../api/songs';
 import { Song, SongSection } from '../types';
 import LyricsPlayer from '../components/LyricsPlayer';
+import { fetchLineup } from '../api/lineups';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { transposeLyrics, transposeKey, ALL_KEYS, isChordLine } from '../utils/transpose';
 
@@ -346,12 +347,21 @@ export default function SongDetail() {
     : null;
 
   useEffect(() => {
-    fetchSongs()
-      .then(setSongList)
+    let cancelled = false;
+    setSongList([]);
+    Promise.all([fetchSongs(), fromLineup ? fetchLineup(fromLineup) : Promise.resolve(null)])
+      .then(([songs, lineup]) => {
+        if (cancelled) return;
+        setSongList(lineup ? lineup.sections.flatMap(section => section.songs.flatMap(entry => {
+          const match = songs.find(item => item.id === entry.song_id);
+          return match ? [{ ...match, current_key: entry.key_override || match.current_key }] : [];
+        })) : songs);
+      })
       .catch(() => {
         // Swipe navigation will simply be unavailable if this fails.
       });
-  }, []);
+    return () => { cancelled = true; };
+  }, [fromLineup]);
 
   useEffect(() => {
     if (!id) return;
@@ -472,7 +482,12 @@ export default function SongDetail() {
     setAutoScroll(false);
     setPendingSwipeTitle(targetSong.title);
     shouldJumpToLyricsRef.current = true;
-    navigate(`/songs/${targetSong.id}`);
+    const params = new URLSearchParams();
+    if (fromLineup) {
+      params.set('fromLineup', fromLineup);
+      params.set('key', targetSong.current_key || targetSong.original_key);
+    }
+    navigate(`/songs/${targetSong.id}${params.size ? `?${params}` : ''}`);
   }
 
   function handleTouchStart(e: TouchEvent<HTMLDivElement>) {
@@ -501,8 +516,8 @@ export default function SongDetail() {
   return (
     <>
       <div className="flex flex-col gap-6 max-w-2xl mx-auto">
-        {fullscreen && <LyricsPlayer initialSong={song} initialKey={currentKey} entries={songList.map(item => ({ id: item.id }))} initialIndex={currentSongIndex} onClose={() => setFullscreen(false)} />}
-        <button className="btn-primary no-print" onClick={() => { setAutoScroll(false); setFullscreen(true); }}>Fullscreen lyrics / Musician preview</button>
+        {fullscreen && <LyricsPlayer initialSong={song} initialKey={currentKey} entries={songList.map(item => ({ id: item.id, key: item.current_key }))} initialIndex={currentSongIndex} onClose={() => setFullscreen(false)} />}
+        <button className="btn-primary no-print" onClick={() => { setAutoScroll(false); setFullscreen(true); }}>Fullscreen lyrics</button>
         {/* Header */}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">
@@ -531,7 +546,7 @@ export default function SongDetail() {
 
             <div className="flex gap-2 flex-wrap mt-3">
               <button type="button" onClick={handleBack} className="btn-secondary text-xs">
-                ← Back
+                {fromLineup ? '← Back to lineup' : '← Back to songs'}
               </button>
 
               <Link to={`/songs/${id}/edit`} className="btn-secondary text-xs">

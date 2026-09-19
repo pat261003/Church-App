@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import axios from 'axios';
+import { HashRouter, Link, NavLink, Routes, Route, Navigate } from 'react-router-dom';
 import type { Song } from './types';
 import './index.css';
 
@@ -23,25 +24,45 @@ const songs: Song[] = [
 ];
 
 axios.defaults.adapter = async config => {
+  if (config.method !== 'get') throw new Error('This sample preview is read-only.');
   const id = config.url?.split('/').pop();
-  const song = songs.find(item => item.id === id);
-  if (!song) throw new Error('Only sample songs are available in this preview.');
-  return { data: song, status: 200, statusText: 'OK', headers: {}, config };
+  const data = config.url === '/api/songs' ? songs
+    : config.url === '/api/lineups/demo-lineup' ? {
+      id: 'demo-lineup', title: 'Sunday Demo Lineup', service_date: '2026-09-20', song_leader: 'Demo Leader', notes: null,
+      sections: [{ id: 'demo-section', section_name: 'Worship', section_order: 0,
+        songs: songs.map((song, index) => ({ id: `entry-${index}`, song_id: song.id, title: song.title,
+          song_order: index, key_override: index === 0 ? 'A' : 'D', original_key: song.original_key })) }],
+    } : songs.find(item => item.id === id);
+  if (!data) throw new Error('Only sample songs are available in this preview.');
+  return { data, status: 200, statusText: 'OK', headers: {}, config };
 };
 
 // Load after configuring the preview adapter, before songs.ts creates its client.
-const LyricsPlayer = React.lazy(() => import('./components/LyricsPlayer'));
+const SongDetail = React.lazy(() => import('./pages/SongDetail'));
+const LineupDetail = React.lazy(() => import('./pages/LineupDetail'));
 
 function Preview() {
-  const [open, setOpen] = React.useState(true);
-  return <React.Suspense fallback={<p>Loading preview…</p>}>
-    <div className="max-w-xl mx-auto p-8">
-      <h1 className="text-2xl font-bold mb-4">Lyrics player preview</h1>
-      <p className="mb-4">This preview uses two sample songs. No Render connection is needed. Try swiping, changing keys, chord preview, and scrolling to hide or show the menu.</p>
-      <button className="btn-primary" onClick={() => setOpen(true)}>Open fullscreen player</button>
+  return <HashRouter><React.Suspense fallback={<p>Loading preview…</p>}>
+    <div className="max-w-3xl mx-auto p-4 pb-32">
+      <p className="text-sm text-gray-500 mb-4">Sample preview · No Render connection needed</p>
+      <nav className="flex gap-3 mb-6" aria-label="Preview tabs">
+        <NavLink to="/songs" className={({ isActive }) => isActive ? 'btn-primary' : 'btn-secondary'}>Songs</NavLink>
+        <NavLink to="/lineups" className={({ isActive }) => isActive ? 'btn-primary' : 'btn-secondary'}>Lineups</NavLink>
+      </nav>
+      <Routes>
+        <Route path="/" element={<Navigate to="/songs" replace />} />
+        <Route path="/songs" element={<>
+          <h1 className="text-2xl font-bold mb-4">Songs</h1>
+          <p className="mb-4">Choose a song, then tap Fullscreen lyrics. Exit fullscreen to return to the song; Back to songs returns here.</p>
+          {songs.map(song => <Link className="card block mb-3" key={song.id} to={`/songs/${song.id}`}><strong>{song.title}</strong><p>Key: {song.original_key} · Open lyrics →</p></Link>)}
+        </>} />
+        <Route path="/songs/:id" element={<SongDetail />} />
+        <Route path="/lineups" element={<><h1 className="text-2xl font-bold mb-4">Lineups</h1><Link className="card block" to="/lineups/demo-lineup">Sunday Demo Lineup →</Link></>} />
+        <Route path="/lineups/:id" element={<LineupDetail />} />
+        <Route path="*" element={<p>Editing and printing are unavailable in this sample preview. Use the Songs or Lineups tab above.</p>} />
+      </Routes>
     </div>
-    {open && <LyricsPlayer initialSong={songs[0]} initialKey="G" entries={songs.map(song => ({ id: song.id }))} initialIndex={0} onClose={() => setOpen(false)} />}
-  </React.Suspense>;
+  </React.Suspense></HashRouter>;
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<Preview />);

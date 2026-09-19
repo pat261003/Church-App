@@ -347,7 +347,7 @@ export default function LineupDetail() {
   const [lineup, setLineup] = useState<ServiceLineup | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [singingMode, setSingingMode] = useState(true);
+  const [singingMode, setSingingMode] = useState(false);
   const [activeSongIndex, setActiveSongIndex] = useState(0);
   const [activeSongDetail, setActiveSongDetail] = useState<Song | null>(null);
   const [loadingSong, setLoadingSong] = useState(false);
