@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/lyrics-preview",
+      "destination": "/lyrics-preview.html"
+    },
+    {
+      "source": "/lyrics-preview.html",
+      "destination": "/lyrics-preview.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
