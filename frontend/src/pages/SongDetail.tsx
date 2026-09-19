@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast';
 import { fetchSong, fetchSongs, getSongDocxExportUrl } from '../api/songs';
 import { Song, SongSection } from '../types';
+import LyricsPlayer from '../components/LyricsPlayer';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { transposeLyrics, transposeKey, ALL_KEYS, isChordLine } from '../utils/transpose';
 
@@ -315,6 +316,7 @@ export default function SongDetail() {
   const lineupKey = searchParams.get('key');
   const fromLineup = searchParams.get('fromLineup');
 
+  const [fullscreen, setFullscreen] = useState(false);
   const [song, setSong] = useState<Song | null>(null);
   const [songList, setSongList] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
@@ -499,6 +501,8 @@ export default function SongDetail() {
   return (
     <>
       <div className="flex flex-col gap-6 max-w-2xl mx-auto">
+        {fullscreen && <LyricsPlayer initialSong={song} initialKey={currentKey} entries={songList.map(item => ({ id: item.id }))} initialIndex={currentSongIndex} onClose={() => setFullscreen(false)} />}
+        <button className="btn-primary no-print" onClick={() => { setAutoScroll(false); setFullscreen(true); }}>Fullscreen lyrics / Musician preview</button>
         {/* Header */}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">

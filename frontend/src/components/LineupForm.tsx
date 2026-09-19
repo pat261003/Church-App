@@ -551,7 +551,7 @@ export default function LineupForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5 pb-36 md:pb-10">
       <div className="card flex flex-col gap-3">
         <h2 className="font-semibold text-primary">Service Info</h2>
 
@@ -787,7 +787,7 @@ export default function LineupForm({
         )}
       </div>
 
-      <div className="flex gap-3 flex-col sm:flex-row">
+      <div className="fixed left-3 right-3 bottom-24 md:sticky md:bottom-4 z-40 bg-white/95 backdrop-blur border border-slate-200 shadow-lg rounded-2xl p-3 flex gap-3 flex-col sm:flex-row max-w-5xl mx-auto">
         <button type="submit" disabled={submitting} className="btn-primary flex-1 py-3">
           {submitting ? 'Saving...' : submitLabel}
         </button>

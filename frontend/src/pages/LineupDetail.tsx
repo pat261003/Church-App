@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { fetchLineup } from '../api/lineups';
 import { fetchSong } from '../api/songs';
 import { ServiceLineup, Song, SongSection } from '../types';
+import LyricsPlayer from '../components/LyricsPlayer';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { formatDatePH } from '../utils/csv';
 import { transposeLyrics, transposeKey, ALL_KEYS, isChordLine } from '../utils/transpose';
@@ -340,6 +341,7 @@ function FloatingAutoScrollControls({
 }
 
 export default function LineupDetail() {
+  const [fullscreen, setFullscreen] = useState(false);
   const { id } = useParams<{ id: string }>();
 
   const [lineup, setLineup] = useState<ServiceLineup | null>(null);
@@ -519,7 +521,9 @@ export default function LineupDetail() {
 
   return (
     <>
+      {fullscreen && activeSongDetail && <LyricsPlayer initialSong={activeSongDetail} initialKey={currentKey} entries={lineupSongs.map(item => ({ id: item.song.song_id, key: item.song.key_override }))} initialIndex={activeSongIndex} onClose={() => setFullscreen(false)} />}
       <div className="max-w-3xl mx-auto flex flex-col gap-5">
+        {singingMode && activeSongDetail && !loadingSong && <button className="btn-primary no-print" onClick={() => { setAutoScroll(false); setFullscreen(true); }}>Fullscreen lyrics / Musician preview</button>}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <h1 className="text-2xl font-bold text-church-navy break-words">
